@@ -52,17 +52,16 @@ func handlePost(rep repo.Repository, res http.ResponseWriter, req *http.Request)
 		res.Write([]byte("Ошибка при чтении тела запроса"))
 		return
 	}
-	bodyUrl := string(body)
-	if !postValidator.MatchString(bodyUrl) {
+	bodyURL := string(body)
+	if !postValidator.MatchString(bodyURL) {
 		res.WriteHeader(http.StatusBadRequest)
 		res.Write([]byte("Ошибка при валидации тела запроса"))
 		return
 	}
-	id := saveURL(rep, bodyUrl)
+	id := saveURL(rep, bodyURL)
 	url := constant.ServerURL + id
 	res.WriteHeader(http.StatusCreated)
 	res.Write([]byte(url))
-	return
 }
 
 func handleGet(rep repo.Repository, res http.ResponseWriter, req *http.Request) {
@@ -81,7 +80,6 @@ func handleGet(rep repo.Repository, res http.ResponseWriter, req *http.Request) 
 	fmt.Println("Response Location", url)
 	res.Header().Set(HeaderLocation, url)
 	res.WriteHeader(http.StatusTemporaryRedirect)
-	return
 }
 
 func saveURL(rep repo.Repository, url string) string {
