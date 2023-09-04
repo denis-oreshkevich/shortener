@@ -132,7 +132,7 @@ func runSubTests(t *testing.T, tests []Test) {
 				defer result.Body.Close()
 				respBody, err := io.ReadAll(result.Body)
 				assert.NoError(t, err)
-				assert.True(t, IdRegex.MatchString(string(respBody)))
+				assert.True(t, IDRegex.MatchString(string(respBody)))
 			}
 		})
 	}

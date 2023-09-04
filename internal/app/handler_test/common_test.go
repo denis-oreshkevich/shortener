@@ -7,7 +7,7 @@ import (
 	"regexp"
 )
 
-var IdRegex = regexp.MustCompile(constant.ServerURL + "/[A-Za-z]{8}")
+var IDRegex = regexp.MustCompile(constant.ServerURL + "/[A-Za-z]{8}")
 
 type MockedRepository struct {
 	mock.Mock
