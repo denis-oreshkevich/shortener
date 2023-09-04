@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"github.com/denis-oreshkevich/shortener/internal/app/handler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"io"
@@ -115,7 +114,7 @@ func runSubTests(t *testing.T, tests []Test) {
 				mockCall = tt.mockOn(testObj)
 			}
 
-			handlerFunc := handler.URL(testObj)
+			handlerFunc := URL(testObj)
 			handlerFunc.ServeHTTP(w, request)
 
 			if tt.isMock {
@@ -132,7 +131,7 @@ func runSubTests(t *testing.T, tests []Test) {
 				defer result.Body.Close()
 				respBody, err := io.ReadAll(result.Body)
 				assert.NoError(t, err)
-				assert.True(t, IDRegex.MatchString(string(respBody)))
+				assert.True(t, IDURLRegex.MatchString(string(respBody)))
 			}
 		})
 	}
