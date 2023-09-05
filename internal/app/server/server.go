@@ -9,7 +9,7 @@ import (
 
 var repository = repo.New()
 
-func Init() {
+func InitServer() {
 	r := handler.SetupRouter(repository)
 
 	host := fmt.Sprintf("%s:%s", constant.ServerHost, constant.ServerPort)

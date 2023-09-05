@@ -21,7 +21,7 @@ func TestPost(t *testing.T) {
 				return httptest.NewRequest("POST", "/", body)
 			},
 			want: Want{
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 				statusCode:  201,
 			},
 		},
@@ -32,7 +32,7 @@ func TestPost(t *testing.T) {
 				return httptest.NewRequest("POST", "/", nil)
 			},
 			want: Want{
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 				statusCode:  400,
 			},
 		},
@@ -44,7 +44,7 @@ func TestPost(t *testing.T) {
 				return httptest.NewRequest("POST", "/", body)
 			},
 			want: Want{
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 				statusCode:  400,
 			},
 		},
@@ -64,7 +64,7 @@ func TestGet(t *testing.T) {
 				return httptest.NewRequest("GET", "/AAAAAAAA", nil)
 			},
 			want: Want{
-				contentType:    "text/plain",
+				contentType:    "text/plain; charset=utf-8",
 				statusCode:     307,
 				headerLocation: "http://localhost:30001/",
 			},
@@ -76,7 +76,7 @@ func TestGet(t *testing.T) {
 				return httptest.NewRequest("GET", "/HHH", nil)
 			},
 			want: Want{
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 				statusCode:  400,
 			},
 		},
@@ -90,7 +90,7 @@ func TestGet(t *testing.T) {
 				return httptest.NewRequest("GET", "/HHHHHHHH", nil)
 			},
 			want: Want{
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 				statusCode:  400,
 			},
 		},
@@ -107,7 +107,7 @@ func TestNoRoutes(t *testing.T) {
 				return httptest.NewRequest("GET", "/test/AAAAAAAA", nil)
 			},
 			want: Want{
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 				statusCode:  400,
 			},
 		},
@@ -119,7 +119,7 @@ func TestNoRoutes(t *testing.T) {
 				return httptest.NewRequest("POST", "/test", body)
 			},
 			want: Want{
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 				statusCode:  400,
 			},
 		},
@@ -131,7 +131,7 @@ func TestNoRoutes(t *testing.T) {
 				return httptest.NewRequest("DELETE", "/", body)
 			},
 			want: Want{
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 				statusCode:  400,
 			},
 		},
