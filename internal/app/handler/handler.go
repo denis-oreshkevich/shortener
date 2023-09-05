@@ -11,6 +11,11 @@ import (
 	"net/http"
 )
 
+const (
+	ContentType = "Content-type"
+	TextPlain   = "text/plain; charset=utf-8"
+)
+
 func SetupRouter(repository repo.Repository) *gin.Engine {
 	r := gin.Default()
 
@@ -19,7 +24,7 @@ func SetupRouter(repository repo.Repository) *gin.Engine {
 	r.GET(`/:id`, get(repository))
 
 	r.NoRoute(func(c *gin.Context) {
-		c.Data(400, "text/plain", []byte("Роут не найден"))
+		c.Data(400, "text/plain; charset=utf-8", []byte("Роут не найден"))
 	})
 	return r
 }
@@ -51,7 +56,7 @@ func get(repository repo.Repository) func(c *gin.Context) {
 		if !ok {
 			c.String(http.StatusBadRequest, "Не найдено сохраненного URL")
 		}
-		c.Header("Content-type", "text/plain; charset=utf-8")
+		c.Header(ContentType, TextPlain)
 		c.Redirect(http.StatusTemporaryRedirect, url)
 	}
 }
