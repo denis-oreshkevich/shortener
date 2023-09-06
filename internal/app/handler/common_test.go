@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"github.com/denis-oreshkevich/shortener/internal/app/constant"
+	"github.com/denis-oreshkevich/shortener/internal/app/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"io"
@@ -11,14 +11,15 @@ import (
 	"testing"
 )
 
-var IDURLRegex = regexp.MustCompile(constant.ServerURL + "/[A-Za-z]{8}")
+var IDURLRegex = regexp.MustCompile(config.Get().BaseURL + "/[A-Za-z]{8}")
 
 type MockedRepository struct {
 	mock.Mock
 }
 
-func (m *MockedRepository) SaveURL(id, url string) {
-	m.Called(id, url)
+func (m *MockedRepository) SaveURL(url string) string {
+	args := m.Called(url)
+	return args.String(0)
 }
 
 func (m *MockedRepository) FindURL(id string) (string, bool) {
