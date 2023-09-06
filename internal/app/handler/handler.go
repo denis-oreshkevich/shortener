@@ -24,7 +24,7 @@ func SetupRouter(repository repo.Repository) *gin.Engine {
 	r.GET(`/:id`, get(repository))
 
 	r.NoRoute(func(c *gin.Context) {
-		c.Data(400, "text/plain; charset=utf-8", []byte("Роут не найден"))
+		c.Data(400, TextPlain, []byte("Роут не найден"))
 	})
 	return r
 }
