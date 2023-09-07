@@ -78,6 +78,9 @@ func initAppArg(is initStructure) {
 
 func initServerAddrFunc() func(hp string) error {
 	return func(hp string) error {
+		if hp == "" {
+			return errors.New("argument is empty")
+		}
 		host, port, er := net.SplitHostPort(hp)
 		if er != nil {
 			return er
