@@ -36,6 +36,7 @@ type ServerConf struct {
 type initStructure struct {
 	envName  string
 	argName  string
+	argVal   string
 	usage    string
 	initFunc func(s string) error
 }
@@ -46,9 +47,11 @@ func Get() ServerConf {
 
 func init() {
 	srvConf = ServerConf{}
+	//flagSet := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	srvAddr := initStructure{
 		envName:  ServerAddressEnvName,
 		argName:  "a",
+		argVal:   "",
 		usage:    "HTTP server address",
 		initFunc: initServerAddrFunc(),
 	}
@@ -56,6 +59,7 @@ func init() {
 	bu := initStructure{
 		envName:  BaseURLEnvName,
 		argName:  "b",
+		argVal:   "",
 		usage:    "HTTP server base URL",
 		initFunc: initBaseURLFunc(),
 	}
@@ -69,10 +73,11 @@ func initAppArg(is initStructure) {
 	v, ex := os.LookupEnv(is.envName)
 	inFunc := is.initFunc
 	if ex {
+		flag.String(is.argName, is.argVal, is.usage)
 		inFunc(v)
 	} else {
 		fmt.Printf("Env variable %s not found try to init from command line args\n", is.envName)
-		flag.Func(is.argName, is.usage, inFunc)
+		flag.Func(is.argName, is.usage, is.initFunc)
 	}
 }
 
