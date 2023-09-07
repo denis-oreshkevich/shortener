@@ -109,7 +109,6 @@ func initBaseURLFunc() func(u string) error {
 		srvConf.BasePath = strings.TrimSuffix(parsed.Path, "/")
 
 		srvConf.BaseURL = strings.TrimSuffix(u, "/")
-		fmt.Printf("!!! %+v\n", srvConf)
 		return nil
 	}
 }
