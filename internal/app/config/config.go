@@ -74,7 +74,10 @@ func initAppArg(is initStructure) {
 	inFunc := is.initFunc
 	if ex {
 		flag.String(is.argName, is.argVal, is.usage)
-		inFunc(v)
+		err := inFunc(v)
+		if err != nil {
+			panic(err)
+		}
 	} else {
 		fmt.Printf("Env variable %s not found try to init from command line args\n", is.envName)
 		flag.Func(is.argName, is.usage, is.initFunc)
