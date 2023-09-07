@@ -18,7 +18,7 @@ const (
 	defaultProtocol = "http"
 )
 
-var srvConf *ServerConf
+var srvConf ServerConf
 
 type ServerConf struct {
 	Protocol string
@@ -29,12 +29,12 @@ type ServerConf struct {
 }
 
 func Get() ServerConf {
-	fmt.Printf("Server configuration: %v\n", *srvConf)
-	return *srvConf
+	fmt.Printf("Server configuration: %v\n", srvConf)
+	return srvConf
 }
 
 func init() {
-	srvConf = &ServerConf{}
+	srvConf = ServerConf{}
 	flag.Func("b", "HTTP server base URL path", initB())
 	flag.Func("a", "HTTP server address", initA())
 
