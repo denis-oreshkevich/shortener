@@ -20,124 +20,98 @@ const (
 
 	defaultPort = "8080"
 
-	defaultProtocol = "http"
+	defaultScheme = "http"
 )
 
 var srvConf ServerConf
-
-type ServerConf struct {
-	Scheme   string
-	Host     string
-	Port     string
-	BaseURL  string
-	BasePath string
-}
-
-type initStructure struct {
-	envName  string
-	argName  string
-	argVal   string
-	usage    string
-	initFunc func(s string) error
-}
 
 func Get() ServerConf {
 	return srvConf
 }
 
-func init() {
+type initStructure struct {
+	envName  string
+	argVal   string
+	initFunc func(s string) error
+}
+
+func Parse() error {
 	srvConf = ServerConf{}
-	//flagSet := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-	srvAddr := initStructure{
+	a := flag.String("a", fmt.Sprintf("%s:%s", defaultHost, defaultPort), "HTTP server address")
+	b := flag.String("b", fmt.Sprintf("%s://%s:%s", defaultScheme, defaultHost, defaultPort), "HTTP server base URL")
+	flag.Parse()
+
+	isa := initStructure{
 		envName:  ServerAddressEnvName,
-		argName:  "a",
-		argVal:   "",
-		usage:    "HTTP server address",
-		initFunc: initServerAddrFunc(),
+		argVal:   *a,
+		initFunc: serverAddrFunc(),
 	}
-	initAppArg(srvAddr)
-	bu := initStructure{
+
+	err := initAppParam(isa)
+	if err != nil {
+		return err
+	}
+
+	ibu := initStructure{
 		envName:  BaseURLEnvName,
-		argName:  "b",
-		argVal:   "",
-		usage:    "HTTP server base URL",
-		initFunc: initBaseURLFunc(),
+		argVal:   *b,
+		initFunc: baseURLFunc(),
 	}
-	initAppArg(bu)
 
-	initDefault()
+	err = initAppParam(ibu)
+	if err != nil {
+		return err
+	}
 	fmt.Printf("Result server configuration: %+v\n", srvConf)
+	return nil
 }
 
-func initAppArg(is initStructure) {
-	v, ex := os.LookupEnv(is.envName)
-	inFunc := is.initFunc
-	if ex {
-		flag.String(is.argName, is.argVal, is.usage)
-		err := inFunc(v)
-		if err != nil {
-			panic(err)
-		}
-	} else {
+func initAppParam(is initStructure) error {
+	sa, ex := os.LookupEnv(is.envName)
+	if !ex {
+		sa = is.argVal
 		fmt.Printf("Env variable %s not found try to init from command line args\n", is.envName)
-		flag.Func(is.argName, is.usage, is.initFunc)
 	}
+	err := is.initFunc(sa)
+	return err
 }
 
-func initServerAddrFunc() func(hp string) error {
+func serverAddrFunc() func(s string) error {
 	return func(hp string) error {
 		if hp == "" {
-			return errors.New("argument is empty")
+			return errors.New("serverAddrFunc arg is empty")
 		}
-		host, port, er := net.SplitHostPort(hp)
-		if er != nil {
-			return er
+		host, port, err := net.SplitHostPort(hp)
+		if err != nil {
+			return fmt.Errorf("serverAddrFunc split host %w", err)
 		}
-		srvConf.Host = host
-		srvConf.Port = port
+		srvConf.host = host
+		srvConf.port = port
 		return nil
 	}
 }
 
-func initBaseURLFunc() func(u string) error {
+func baseURLFunc() func(s string) error {
 	return func(u string) error {
 		if !validator.URL(u) {
-			return errors.New("error validating URL")
+			return errors.New("baseURLFunc validating URL")
 		}
 		parsed, err := url.Parse(u)
 		if err != nil {
-			return err
+			return fmt.Errorf("baseURLFunc parse url %w", err)
 		}
 
-		host, port, er := net.SplitHostPort(parsed.Host)
-		if er != nil {
-			return er
+		host, port, err := net.SplitHostPort(parsed.Host)
+		if err != nil {
+			return fmt.Errorf("split host %w", err)
 		}
 
-		srvConf.Scheme = parsed.Scheme
-		srvConf.Host = host
-		srvConf.Port = port
-		srvConf.BasePath = strings.TrimSuffix(parsed.Path, "/")
+		srvConf.scheme = parsed.Scheme
+		srvConf.host = host
+		srvConf.port = port
+		srvConf.basePath = strings.TrimSuffix(parsed.Path, "/")
 
-		srvConf.BaseURL = strings.TrimSuffix(u, "/")
+		srvConf.baseURL = strings.TrimSuffix(u, "/")
 		return nil
-	}
-}
-
-func initDefault() {
-	if srvConf.Scheme == "" {
-		srvConf.Scheme = defaultProtocol
-	}
-
-	if srvConf.Host == "" {
-		srvConf.Host = defaultHost
-	}
-
-	if srvConf.Port == "" {
-		srvConf.Port = defaultPort
-	}
-
-	if srvConf.BaseURL == "" {
-		srvConf.BaseURL = fmt.Sprintf("%s://%s:%s%s", srvConf.Scheme, srvConf.Host, srvConf.Port, srvConf.BasePath)
 	}
 }
