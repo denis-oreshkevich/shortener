@@ -1,19 +1,19 @@
 package server
 
 import (
+	"fmt"
 	"github.com/denis-oreshkevich/shortener/internal/app/constant"
 	"github.com/denis-oreshkevich/shortener/internal/app/handler"
 	"github.com/denis-oreshkevich/shortener/internal/app/repo"
-	"net/http"
 )
 
-var repository = repo.Get()
+var repository = repo.New()
 
 func InitServer() {
-	mux := http.NewServeMux()
-	mux.HandleFunc(`/`, handler.URL(repository))
+	r := handler.SetupRouter(repository)
 
-	err := http.ListenAndServe(constant.ServerHost+":"+constant.ServerPort, mux)
+	host := fmt.Sprintf("%s:%s", constant.ServerHost, constant.ServerPort)
+	err := r.Run(host)
 
 	if err != nil {
 		panic(err)

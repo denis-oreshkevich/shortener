@@ -3,88 +3,66 @@ package handler
 import (
 	"fmt"
 	"github.com/denis-oreshkevich/shortener/internal/app/constant"
-	"github.com/denis-oreshkevich/shortener/internal/app/generator"
 	"github.com/denis-oreshkevich/shortener/internal/app/repo"
+	"github.com/denis-oreshkevich/shortener/internal/app/util/generator"
+	"github.com/denis-oreshkevich/shortener/internal/app/util/validator"
+	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
-	"regexp"
 )
 
 const (
-	HeaderLocation    = "Location"
-	HeaderContentType = "Content-Type"
-	URLRegex          = "(?:http|https):\\/\\/(www\\\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)"
-
-	IDRegex = "^\\/[A-Za-z]{8}"
+	ContentType = "Content-type"
+	TextPlain   = "text/plain; charset=utf-8"
 )
 
-var postValidator = regexp.MustCompile(URLRegex)
-var getValidator = regexp.MustCompile(IDRegex)
+func SetupRouter(repository repo.Repository) *gin.Engine {
+	r := gin.Default()
 
-func URL(rep repo.Repository) http.HandlerFunc {
-	return func(res http.ResponseWriter, req *http.Request) {
-		fmt.Println("New request received with url =", req.URL.Path, ",method =", req.Method)
-		res.Header().Set(HeaderContentType, "text/plain")
-		switch req.Method {
-		case "POST":
-			handlePost(rep, res, req)
-			return
-		case "GET":
-			handleGet(rep, res, req)
-			return
-		default:
-			res.WriteHeader(http.StatusBadRequest)
-			res.Write([]byte("Meтод не поддерживается, я 405"))
+	r.POST(`/`, post(repository))
+	//r.POST(`/`, gin.WrapF(post(repository)))
+	r.GET(`/:id`, get(repository))
+
+	r.NoRoute(func(c *gin.Context) {
+		c.Data(400, TextPlain, []byte("Роут не найден"))
+	})
+	return r
+}
+
+func post(repository repo.Repository) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		req := c.Request
+		body, err := io.ReadAll(req.Body)
+		if err != nil {
+			c.String(http.StatusBadRequest, "Ошибка при чтении тела запроса")
 		}
-
+		bodyURL := string(body)
+		if !validator.URL(bodyURL) {
+			c.String(http.StatusBadRequest, "Ошибка при валидации тела запроса")
+		}
+		id := saveURL(repository, bodyURL)
+		url := fmt.Sprintf("%s/%s", constant.ServerURL, id)
+		c.String(http.StatusCreated, url)
 	}
 }
 
-func handlePost(rep repo.Repository, res http.ResponseWriter, req *http.Request) {
-	if req.URL.Path != "/" {
-		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte("Неверный адрес запроса"))
-		return
+func get(repository repo.Repository) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		if !validator.ID(id) {
+			c.String(http.StatusBadRequest, "Ошибка при валидации параметра id")
+		}
+		url, ok := repository.FindURL(id)
+		if !ok {
+			c.String(http.StatusBadRequest, "Не найдено сохраненного URL")
+		}
+		c.Header(ContentType, TextPlain)
+		c.Redirect(http.StatusTemporaryRedirect, url)
 	}
-	body, err := io.ReadAll(req.Body)
-	if err != nil {
-		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte("Ошибка при чтении тела запроса"))
-		return
-	}
-	bodyURL := string(body)
-	if !postValidator.MatchString(bodyURL) {
-		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte("Ошибка при валидации тела запроса"))
-		return
-	}
-	id := saveURL(rep, bodyURL)
-	url := constant.ServerURL + id
-	res.WriteHeader(http.StatusCreated)
-	res.Write([]byte(url))
-}
-
-func handleGet(rep repo.Repository, res http.ResponseWriter, req *http.Request) {
-	id := req.URL.Path
-	if !getValidator.MatchString(id) {
-		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte("Ошибка при валидации параметра id"))
-		return
-	}
-	url, ok := rep.FindURL(id)
-	if !ok {
-		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte("Не найдено сохраненного запроса"))
-		return
-	}
-	fmt.Println("Response Location", url)
-	res.Header().Set(HeaderLocation, url)
-	res.WriteHeader(http.StatusTemporaryRedirect)
 }
 
 func saveURL(rep repo.Repository, url string) string {
 	id := generator.RandString(8)
-	id = "/" + id
 	rep.SaveURL(id, url)
 	return id
 }

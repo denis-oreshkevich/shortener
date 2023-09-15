@@ -14,7 +14,7 @@ var repositoryMap repo
 func init() {
 	repositoryMap = make(map[string]string)
 }
-func Get() Repository {
+func New() Repository {
 	return repositoryMap
 }
 
