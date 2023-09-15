@@ -2,9 +2,8 @@ package handler
 
 import (
 	"fmt"
-	"github.com/denis-oreshkevich/shortener/internal/app/constant"
+	"github.com/denis-oreshkevich/shortener/internal/app/config"
 	"github.com/denis-oreshkevich/shortener/internal/app/repo"
-	"github.com/denis-oreshkevich/shortener/internal/app/util/generator"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/validator"
 	"github.com/gin-gonic/gin"
 	"io"
@@ -16,12 +15,15 @@ const (
 	TextPlain   = "text/plain; charset=utf-8"
 )
 
+var conf config.ServerConf
+
 func SetupRouter(repository repo.Repository) *gin.Engine {
+	conf = config.Get()
 	r := gin.Default()
 
 	r.POST(`/`, post(repository))
-	//r.POST(`/`, gin.WrapF(post(repository)))
-	r.GET(`/:id`, get(repository))
+
+	r.GET(conf.BasePath+`/:id`, get(repository))
 
 	r.NoRoute(func(c *gin.Context) {
 		c.Data(400, TextPlain, []byte("Роут не найден"))
@@ -40,8 +42,8 @@ func post(repository repo.Repository) func(c *gin.Context) {
 		if !validator.URL(bodyURL) {
 			c.String(http.StatusBadRequest, "Ошибка при валидации тела запроса")
 		}
-		id := saveURL(repository, bodyURL)
-		url := fmt.Sprintf("%s/%s", constant.ServerURL, id)
+		id := repository.SaveURL(bodyURL)
+		url := fmt.Sprintf("%s/%s", conf.BaseURL, id)
 		c.String(http.StatusCreated, url)
 	}
 }
@@ -59,10 +61,4 @@ func get(repository repo.Repository) func(c *gin.Context) {
 		c.Header(ContentType, TextPlain)
 		c.Redirect(http.StatusTemporaryRedirect, url)
 	}
-}
-
-func saveURL(rep repo.Repository, url string) string {
-	id := generator.RandString(8)
-	rep.SaveURL(id, url)
-	return id
 }
