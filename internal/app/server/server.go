@@ -4,18 +4,28 @@ import (
 	"fmt"
 	"github.com/denis-oreshkevich/shortener/internal/app/config"
 	"github.com/denis-oreshkevich/shortener/internal/app/handler"
-	"github.com/denis-oreshkevich/shortener/internal/app/repo"
+	"github.com/gin-gonic/gin"
 )
 
-var repository = repo.New()
+type Server struct {
+	conf   config.ServerConf
+	router *gin.Engine
+}
 
-func InitServer() {
-	r := handler.SetupRouter(repository)
-	conf := config.Get()
+func New(conf config.ServerConf, uh handler.URLHandler) Server {
+	r := gin.Default()
 
-	err := r.Run(fmt.Sprintf("%s:%s", conf.Host, conf.Port))
+	r.POST(`/`, uh.Post())
+	r.GET(conf.BasePath()+`/:id`, uh.Get())
+	r.NoRoute(uh.NoRoute())
 
-	if err != nil {
-		panic(err)
+	return Server{
+		conf:   conf,
+		router: r,
 	}
+}
+
+func (s Server) Start() error {
+	err := s.router.Run(fmt.Sprintf("%s:%s", s.conf.Host(), s.conf.Port()))
+	return err
 }

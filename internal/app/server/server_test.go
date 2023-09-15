@@ -1,6 +1,8 @@
-package handler
+package server
 
 import (
+	"github.com/denis-oreshkevich/shortener/internal/app/config"
+	"github.com/denis-oreshkevich/shortener/internal/app/handler"
 	"github.com/stretchr/testify/mock"
 	"net/http"
 	"net/http/httptest"
@@ -9,11 +11,12 @@ import (
 )
 
 func TestPost(t *testing.T) {
-	postTests := []Test{
+	conf := config.Get()
+	postTests := []test{
 		{
-			name:   "simple post test #1",
+			name:   "simple Post test #1",
 			isMock: true,
-			mockOn: func(m *MockedRepository) *mock.Call {
+			mockOn: func(m *mockedStorage) *mock.Call {
 				return m.On("SaveURL", mock.Anything).Return("CCCCCCCC")
 			},
 			reqFunc: func() *http.Request {
@@ -21,31 +24,31 @@ func TestPost(t *testing.T) {
 				return httptest.NewRequest("POST", "/", body)
 			},
 			want: Want{
-				contentType: TextPlain,
+				contentType: handler.TextPlain,
 				statusCode:  201,
-				body:        conf.BaseURL + "/" + "CCCCCCCC",
+				body:        conf.BaseURL() + "/" + "CCCCCCCC",
 			},
 		},
 		{
-			name:   "nil body post test #2",
+			name:   "nil body Post test #2",
 			isMock: false,
 			reqFunc: func() *http.Request {
 				return httptest.NewRequest("POST", "/", nil)
 			},
 			want: Want{
-				contentType: TextPlain,
+				contentType: handler.TextPlain,
 				statusCode:  400,
 			},
 		},
 		{
-			name:   "bad body url post test #3",
+			name:   "bad body url Post test #3",
 			isMock: false,
 			reqFunc: func() *http.Request {
 				body := strings.NewReader("ahahahah")
 				return httptest.NewRequest("POST", "/", body)
 			},
 			want: Want{
-				contentType: TextPlain,
+				contentType: handler.TextPlain,
 				statusCode:  400,
 			},
 		},
@@ -54,44 +57,45 @@ func TestPost(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	getTests := []Test{
+	conf := config.Get()
+	getTests := []test{
 		{
-			name:   "simple get test #1",
+			name:   "simple Get test #1",
 			isMock: true,
-			mockOn: func(m *MockedRepository) *mock.Call {
+			mockOn: func(m *mockedStorage) *mock.Call {
 				return m.On("FindURL", "AAAAAAAA").Return("http://localhost:30001/", true)
 			},
 			reqFunc: func() *http.Request {
-				return httptest.NewRequest("GET", conf.BasePath+"/AAAAAAAA", nil)
+				return httptest.NewRequest("GET", conf.BasePath()+"/AAAAAAAA", nil)
 			},
 			want: Want{
-				contentType:    TextPlain,
+				contentType:    handler.TextPlain,
 				statusCode:     307,
 				headerLocation: "http://localhost:30001/",
 			},
 		},
 		{
-			name:   "bad id get test #2",
+			name:   "bad id Get test #2",
 			isMock: false,
 			reqFunc: func() *http.Request {
-				return httptest.NewRequest("GET", conf.BasePath+"/HHH", nil)
+				return httptest.NewRequest("GET", conf.BasePath()+"/HHH", nil)
 			},
 			want: Want{
-				contentType: TextPlain,
+				contentType: handler.TextPlain,
 				statusCode:  400,
 			},
 		},
 		{
-			name:   "not stored url get test #3",
+			name:   "not stored url Get test #3",
 			isMock: true,
-			mockOn: func(m *MockedRepository) *mock.Call {
+			mockOn: func(m *mockedStorage) *mock.Call {
 				return m.On("FindURL", "HHHHHHHH").Return("", false)
 			},
 			reqFunc: func() *http.Request {
-				return httptest.NewRequest("GET", conf.BasePath+"/HHHHHHHH", nil)
+				return httptest.NewRequest("GET", conf.BasePath()+"/HHHHHHHH", nil)
 			},
 			want: Want{
-				contentType: TextPlain,
+				contentType: handler.TextPlain,
 				statusCode:  400,
 			},
 		},
@@ -100,27 +104,28 @@ func TestGet(t *testing.T) {
 }
 
 func TestNoRoutes(t *testing.T) {
-	tests := []Test{
+	conf := config.Get()
+	tests := []test{
 		{
-			name:   "bad url get test '/test/AAAAAAAA' #1",
+			name:   "bad url Get test '/test/AAAAAAAA' #1",
 			isMock: false,
 			reqFunc: func() *http.Request {
-				return httptest.NewRequest("GET", conf.BasePath+"/test/AAAAAAAA", nil)
+				return httptest.NewRequest("GET", conf.BasePath()+"/test/AAAAAAAA", nil)
 			},
 			want: Want{
-				contentType: TextPlain,
+				contentType: handler.TextPlain,
 				statusCode:  400,
 			},
 		},
 		{
-			name:   "bad url post test '/test' #2",
+			name:   "bad url Post test '/test' #2",
 			isMock: false,
 			reqFunc: func() *http.Request {
 				body := strings.NewReader("https://practicum.yandex.ru/")
 				return httptest.NewRequest("POST", "/test", body)
 			},
 			want: Want{
-				contentType: TextPlain,
+				contentType: handler.TextPlain,
 				statusCode:  400,
 			},
 		},
@@ -132,7 +137,7 @@ func TestNoRoutes(t *testing.T) {
 				return httptest.NewRequest("DELETE", "/", body)
 			},
 			want: Want{
-				contentType: TextPlain,
+				contentType: handler.TextPlain,
 				statusCode:  400,
 			},
 		},

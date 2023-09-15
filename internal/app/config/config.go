@@ -7,88 +7,111 @@ import (
 	"github.com/denis-oreshkevich/shortener/internal/app/util/validator"
 	"net"
 	"net/url"
+	"os"
 	"strings"
 )
 
 const (
+	ServerAddressEnvName = "SERVER_ADDRESS"
+
+	BaseURLEnvName = "BASE_URL"
+
 	defaultHost = "localhost"
 
 	defaultPort = "8080"
 
-	defaultProtocol = "http"
+	defaultScheme = "http"
 )
 
 var srvConf ServerConf
 
-type ServerConf struct {
-	Protocol string
-	Host     string
-	Port     string
-	BaseURL  string
-	BasePath string
-}
-
 func Get() ServerConf {
-	fmt.Printf("Server configuration: %v\n", srvConf)
 	return srvConf
 }
 
-func init() {
-	srvConf = ServerConf{}
-	flag.Func("b", "HTTP server base URL path", initB())
-	flag.Func("a", "HTTP server address", initA())
-
-	if srvConf.Protocol == "" {
-		srvConf.Protocol = defaultProtocol
-	}
-
-	if srvConf.Host == "" {
-		srvConf.Host = defaultHost
-	}
-
-	if srvConf.Port == "" {
-		srvConf.Port = defaultPort
-	}
-
-	if srvConf.BaseURL == "" {
-		srvConf.BaseURL = fmt.Sprintf("%s://%s:%s%s", srvConf.Protocol, srvConf.Host, srvConf.Port, srvConf.BasePath)
-	}
+type initStructure struct {
+	envName  string
+	argVal   string
+	initFunc func(s string) error
 }
 
-func initB() func(s string) error {
-	return func(s string) error {
-		if !validator.URL(s) {
-			return errors.New("error validating URL")
+func Parse() error {
+	srvConf = ServerConf{}
+	a := flag.String("a", fmt.Sprintf("%s:%s", defaultHost, defaultPort), "HTTP server address")
+	b := flag.String("b", fmt.Sprintf("%s://%s:%s", defaultScheme, defaultHost, defaultPort), "HTTP server base URL")
+	flag.Parse()
+
+	isa := initStructure{
+		envName:  ServerAddressEnvName,
+		argVal:   *a,
+		initFunc: serverAddrFunc(),
+	}
+
+	err := initAppParam(isa)
+	if err != nil {
+		return err
+	}
+
+	ibu := initStructure{
+		envName:  BaseURLEnvName,
+		argVal:   *b,
+		initFunc: baseURLFunc(),
+	}
+
+	err = initAppParam(ibu)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Result server configuration: %+v\n", srvConf)
+	return nil
+}
+
+func initAppParam(is initStructure) error {
+	sa, ex := os.LookupEnv(is.envName)
+	if !ex {
+		sa = is.argVal
+		fmt.Printf("Env variable %s not found try to init from command line args\n", is.envName)
+	}
+	err := is.initFunc(sa)
+	return err
+}
+
+func serverAddrFunc() func(s string) error {
+	return func(hp string) error {
+		if hp == "" {
+			return errors.New("serverAddrFunc arg is empty")
 		}
-		parsed, err := url.Parse(s)
+		host, port, err := net.SplitHostPort(hp)
 		if err != nil {
-			return err
+			return fmt.Errorf("serverAddrFunc split host %w", err)
 		}
-
-		host, port, er := net.SplitHostPort(parsed.Host)
-		if er != nil {
-			return er
-		}
-
-		srvConf.Protocol = parsed.Scheme
-		srvConf.Host = host
-		srvConf.Port = port
-		srvConf.BasePath = strings.TrimSuffix(parsed.Path, "/")
-
-		srvConf.BaseURL = strings.TrimSuffix(s, "/")
-
+		srvConf.host = host
+		srvConf.port = port
 		return nil
 	}
 }
 
-func initA() func(s string) error {
-	return func(s string) error {
-		hp := strings.Split(s, ":")
-		if len(hp) != 2 {
-			return errors.New("need address in a form host:port")
+func baseURLFunc() func(s string) error {
+	return func(u string) error {
+		if !validator.URL(u) {
+			return errors.New("baseURLFunc validating URL")
 		}
-		srvConf.Host = hp[0]
-		srvConf.Port = hp[1]
+		parsed, err := url.Parse(u)
+		if err != nil {
+			return fmt.Errorf("baseURLFunc parse url %w", err)
+		}
+
+		host, port, err := net.SplitHostPort(parsed.Host)
+		if err != nil {
+			return fmt.Errorf("split host %w", err)
+		}
+
+		srvConf.scheme = parsed.Scheme
+		srvConf.host = host
+		srvConf.port = port
+		srvConf.basePath = strings.TrimSuffix(parsed.Path, "/")
+
+		srvConf.baseURL = strings.TrimSuffix(u, "/")
 		return nil
 	}
 }
