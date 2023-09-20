@@ -6,14 +6,22 @@ import (
 	"github.com/denis-oreshkevich/shortener/internal/app/handler"
 	"github.com/denis-oreshkevich/shortener/internal/app/server"
 	"github.com/denis-oreshkevich/shortener/internal/app/storage"
+	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"os"
 )
 
 func main() {
-	err := config.Parse()
+	err := logger.Initialize(zapcore.DebugLevel.String())
+	defer logger.Log.Sync()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "parse config", err)
+		fmt.Fprintln(os.Stderr, "logger initialize", err)
 		os.Exit(1)
+	}
+	err = config.Parse()
+	if err != nil {
+		logger.Log.Fatal("parse config", zap.Error(err))
 	}
 
 	conf := config.Get()
@@ -23,7 +31,6 @@ func main() {
 
 	err = srv.Start()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "start server", err)
-		os.Exit(1)
+		logger.Log.Fatal("start server", zap.Error(err))
 	}
 }

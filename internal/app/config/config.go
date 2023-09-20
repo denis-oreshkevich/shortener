@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/validator"
 	"net"
 	"net/url"
@@ -62,7 +63,7 @@ func Parse() error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Result server configuration: %+v\n", srvConf)
+	logger.Log.Info(fmt.Sprintf("Result server configuration: %+v\n", srvConf))
 	return nil
 }
 
@@ -70,7 +71,7 @@ func initAppParam(is initStructure) error {
 	sa, ex := os.LookupEnv(is.envName)
 	if !ex {
 		sa = is.argVal
-		fmt.Printf("Env variable %s not found try to init from command line args\n", is.envName)
+		logger.Log.Info(fmt.Sprintf("Env variable %s not found try to init from command line args\n", is.envName))
 	}
 	err := is.initFunc(sa)
 	return err
