@@ -129,7 +129,7 @@ func TestShortenPost(t *testing.T) {
 				return httptest.NewRequest("POST", "/api/shorten", bytes.NewReader(marshal))
 			},
 			want: Want{
-				contentType: handler.ApplicationJson,
+				contentType: handler.ApplicationJSON,
 				statusCode:  201,
 				body:        string(res),
 			},

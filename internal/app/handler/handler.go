@@ -14,7 +14,7 @@ import (
 const (
 	ContentType     = "Content-type"
 	TextPlain       = "text/plain; charset=utf-8"
-	ApplicationJson = "application/json; charset=utf-8"
+	ApplicationJSON = "application/json; charset=utf-8"
 )
 
 type URLHandler struct {
@@ -87,7 +87,7 @@ func (h URLHandler) ShortenPost() func(c *gin.Context) {
 		if err != nil {
 			c.String(http.StatusBadRequest, "Ошибка при формировании ответного json")
 		}
-		c.Header(ContentType, ApplicationJson)
+		c.Header(ContentType, ApplicationJSON)
 		c.String(http.StatusCreated, string(res))
 	}
 }
