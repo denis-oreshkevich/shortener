@@ -2,12 +2,15 @@ package server
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"github.com/denis-oreshkevich/shortener/internal/app/config"
 	"github.com/denis-oreshkevich/shortener/internal/app/handler"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -206,4 +209,69 @@ func TestNoRoutes(t *testing.T) {
 		},
 	}
 	RunSubTests(t, tests)
+}
+
+func TestGzipCompression(t *testing.T) {
+	conf := config.Get()
+	tStorage := new(mockedStorage)
+	tStorage.On("SaveURL", mock.Anything).Return("MMMMMMMM")
+	uh := handler.New(conf, tStorage)
+	s := New(conf, uh)
+
+	srv := httptest.NewServer(s.router)
+	defer srv.Close()
+
+	requestBody := `{
+    	"url": "https://practicum.yandex.ru/"
+	}`
+
+	successBody := `{
+        "result":"` + conf.BaseURL() + "/MMMMMMMM" + `"
+	}`
+
+	t.Run("sends_gzip", func(t *testing.T) {
+		buf := bytes.NewBuffer(nil)
+		zb := gzip.NewWriter(buf)
+		_, err := zb.Write([]byte(requestBody))
+		require.NoError(t, err)
+		err = zb.Close()
+		require.NoError(t, err)
+
+		r := httptest.NewRequest("POST", srv.URL+"/api/shorten", buf)
+		r.RequestURI = ""
+		r.Header.Set("Content-Encoding", "gzip")
+
+		resp, err := http.DefaultClient.Do(r)
+		require.NoError(t, err)
+
+		require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+		defer resp.Body.Close()
+
+		b, err := io.ReadAll(resp.Body)
+
+		require.NoError(t, err)
+		require.JSONEq(t, successBody, string(b))
+	})
+
+	t.Run("accepts_gzip", func(t *testing.T) {
+		buf := bytes.NewBufferString(requestBody)
+		r := httptest.NewRequest("POST", srv.URL+"/api/shorten", buf)
+		r.RequestURI = ""
+		r.Header.Set("Accept-Encoding", "gzip")
+
+		resp, err := http.DefaultClient.Do(r)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+		defer resp.Body.Close()
+
+		zr, err := gzip.NewReader(resp.Body)
+		require.NoError(t, err)
+
+		b, err := io.ReadAll(zr)
+		require.NoError(t, err)
+
+		require.JSONEq(t, successBody, string(b))
+	})
 }
