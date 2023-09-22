@@ -2,7 +2,6 @@ package server
 
 import (
 	"github.com/denis-oreshkevich/shortener/internal/app/config"
-	"github.com/denis-oreshkevich/shortener/internal/app/handler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -13,7 +12,7 @@ import (
 	"testing"
 )
 
-var IDURLRegex = regexp.MustCompile(config.Get().BaseURL() + "/[A-Za-z]{8}")
+var IDURLRegex = regexp.MustCompile(config.Get().BaseURL() + "/[A-Za-z]{8}$")
 
 type mockedStorage struct {
 	mock.Mock
@@ -29,7 +28,16 @@ func (m *mockedStorage) FindURL(id string) (string, bool) {
 	return args.String(0), args.Bool(1)
 }
 
-type Want struct {
+type testSrv struct {
+	*httptest.Server
+	tStorage *mockedStorage
+}
+
+func newTestSrv(srv *httptest.Server, tStorage *mockedStorage) *testSrv {
+	return &testSrv{Server: srv, tStorage: tStorage}
+}
+
+type want struct {
 	contentType    string
 	statusCode     int
 	body           string
@@ -41,34 +49,36 @@ type test struct {
 	isMock  bool
 	mockOn  func(m *mockedStorage) *mock.Call
 	reqFunc func() *http.Request
-	want    Want
+	want    want
 }
 
-func RunSubTests(t *testing.T, tests []test) {
-	tStorage := new(mockedStorage)
-	conf := config.Get()
-	uh := handler.New(conf, tStorage)
-	srv := New(conf, uh)
+func RunSubTests(t *testing.T, tests []test, srv *testSrv) {
+	storage := srv.tStorage
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			request := tt.reqFunc()
-			w := httptest.NewRecorder()
 
 			var mockCall *mock.Call
 
 			if tt.isMock {
-				mockCall = tt.mockOn(tStorage)
+				mockCall = tt.mockOn(storage)
 			}
 
-			srv.router.ServeHTTP(w, request)
+			resp, err := client.Do(request)
+			require.NoError(t, err)
 
 			if tt.isMock {
-				tStorage.AssertExpectations(t)
+				storage.AssertExpectations(t)
 				mockCall.Unset()
 			}
-			result := w.Result()
-			defer result.Body.Close()
-			Assert(t, tt, result)
+
+			defer resp.Body.Close()
+			Assert(t, tt, resp)
 		})
 	}
 }
@@ -82,6 +92,6 @@ func Assert(t *testing.T, tt test, result *http.Response) {
 	if tt.want.body != "" {
 		respBody, err := io.ReadAll(result.Body)
 		require.NoError(t, err)
-		assert.True(t, IDURLRegex.MatchString(string(respBody)))
+		assert.Equal(t, tt.want.body, string(respBody))
 	}
 }
