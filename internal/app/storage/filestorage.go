@@ -14,14 +14,14 @@ import (
 )
 
 type Shortener struct {
-	Id          int64  `json:"uuid"`
+	ID          int64  `json:"uuid"`
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
 
 func newShortener(id int64, shortURL, originalURL string) *Shortener {
 	return &Shortener{
-		Id:          id,
+		ID:          id,
 		ShortURL:    shortURL,
 		OriginalURL: originalURL,
 	}
@@ -59,7 +59,7 @@ func NewFileStorage(filename string) (*FileStorage, error) {
 			return nil, fmt.Errorf("NewFileStorage, Unmarshal line #%d %w", line, err)
 		}
 		items[shr.ShortURL] = shr.OriginalURL
-		logger.Log.Debug(fmt.Sprintf("Initializied from file with id = %d, shortURL = %s, OriginalURL = %s", shr.Id, shr.ShortURL, shr.OriginalURL))
+		logger.Log.Debug(fmt.Sprintf("Initializied from file with id = %d, shortURL = %s, OriginalURL = %s", shr.ID, shr.ShortURL, shr.OriginalURL))
 		line++
 	}
 	logger.Log.Info(fmt.Sprintf("Initializing from file count = %d", line))
