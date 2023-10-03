@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"github.com/denis-oreshkevich/shortener/internal/app/config"
 	"github.com/denis-oreshkevich/shortener/internal/app/handler"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
@@ -32,7 +33,7 @@ func TestPost(t *testing.T) {
 			name:   "simple Post test #1",
 			isMock: true,
 			mockOn: func(m *mockedStorage) *mock.Call {
-				return m.On("SaveURL", mock.Anything).Return("CCCCCCCC")
+				return m.On("SaveURL", mock.Anything).Return("CCCCCCCC", nil)
 			},
 			reqFunc: func() *http.Request {
 				body := strings.NewReader("https://practicum.yandex.ru/")
@@ -92,7 +93,7 @@ func TestGet(t *testing.T) {
 			name:   "simple Get test #1",
 			isMock: true,
 			mockOn: func(m *mockedStorage) *mock.Call {
-				return m.On("FindURL", "AAAAAAAA").Return("http://localhost:30001/", true)
+				return m.On("FindURL", "AAAAAAAA").Return("http://localhost:30001/", nil)
 			},
 			reqFunc: func() *http.Request {
 				req := httptest.NewRequest("GET", srv.URL+conf.BasePath()+"/AAAAAAAA", nil)
@@ -122,7 +123,7 @@ func TestGet(t *testing.T) {
 			name:   "not stored url Get test #3",
 			isMock: true,
 			mockOn: func(m *mockedStorage) *mock.Call {
-				return m.On("FindURL", "HHHHHHHH").Return("", false)
+				return m.On("FindURL", "HHHHHHHH").Return("", errors.New("test error"))
 			},
 			reqFunc: func() *http.Request {
 				req := httptest.NewRequest("GET", srv.URL+conf.BasePath()+"/HHHHHHHH", nil)
@@ -157,7 +158,7 @@ func TestShortenPost(t *testing.T) {
 			name:   "simple ShortenPost test #1",
 			isMock: true,
 			mockOn: func(m *mockedStorage) *mock.Call {
-				return m.On("SaveURL", mock.Anything).Return("EEEEEEEE")
+				return m.On("SaveURL", mock.Anything).Return("EEEEEEEE", nil)
 			},
 			reqFunc: func() *http.Request {
 				url := handler.NewURL("https://practicum.yandex.ru/")
@@ -270,7 +271,7 @@ func TestNoRoutes(t *testing.T) {
 func TestGzipCompression(t *testing.T) {
 	conf := config.Get()
 	tStorage := new(mockedStorage)
-	tStorage.On("SaveURL", mock.Anything).Return("MMMMMMMM")
+	tStorage.On("SaveURL", mock.Anything).Return("MMMMMMMM", nil)
 	uh := handler.New(conf, tStorage)
 	s := New(conf, uh)
 
@@ -343,7 +344,6 @@ func TestGzipCompression(t *testing.T) {
 
 		b, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-		println(string(b))
 		require.True(t, IDURLRegex.MatchString(string(b)))
 	})
 }

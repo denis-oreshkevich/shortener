@@ -7,28 +7,37 @@ import (
 	"sync"
 )
 
-type mapStorage struct {
+type MapStorage struct {
 	mx    sync.RWMutex
 	items map[string]string
 }
 
-func NewMapStorage() Storage {
-	return &mapStorage{items: make(map[string]string)}
+var _ Storage = (*MapStorage)(nil)
+
+func NewMapStorage(items map[string]string) *MapStorage {
+	return &MapStorage{items: items}
 }
 
-func (r *mapStorage) SaveURL(url string) string {
+func (r *MapStorage) SaveURL(url string) (string, error) {
 	id := generator.RandString(8)
-	r.mx.Lock()
-	defer r.mx.Unlock()
-	r.items[id] = url
-	logger.Log.Debug(fmt.Sprintf("Saved to storage with id = %s, and value = %s", id, url))
-	return id
+	r.saveURL(id, url)
+	return id, nil
 }
 
-func (r *mapStorage) FindURL(id string) (string, bool) {
+func (r *MapStorage) FindURL(id string) (string, error) {
 	r.mx.RLock()
 	defer r.mx.RUnlock()
 	val, ok := r.items[id]
-	logger.Log.Debug(fmt.Sprintf("Found in storage by id = %s, and status = %t", id, ok))
-	return val, ok
+	logger.Log.Debug(fmt.Sprintf("Found in cache by id = %s, and isExist = %t", id, ok))
+	if !ok {
+		return val, fmt.Errorf("FindURL value not found by id = %s", id)
+	}
+	return val, nil
+}
+
+func (r *MapStorage) saveURL(id, url string) {
+	r.mx.Lock()
+	defer r.mx.Unlock()
+	r.items[id] = url
+	logger.Log.Debug(fmt.Sprintf("Saved to cache with id = %s, and value = %s", id, url))
 }

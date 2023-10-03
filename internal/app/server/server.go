@@ -8,11 +8,11 @@ import (
 )
 
 type Server struct {
-	conf   config.ServerConf
+	conf   config.Conf
 	router *gin.Engine
 }
 
-func New(conf config.ServerConf, uh handler.URLHandler) Server {
+func New(conf config.Conf, uh handler.URLHandler) Server {
 	r := gin.New()
 
 	r.Use(gin.Recovery(), Gzip, Logging)

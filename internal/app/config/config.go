@@ -17,6 +17,8 @@ const (
 
 	BaseURLEnvName = "BASE_URL"
 
+	FileStoragePath = "FILE_STORAGE_PATH"
+
 	defaultHost = "localhost"
 
 	defaultPort = "8080"
@@ -24,10 +26,10 @@ const (
 	defaultScheme = "http"
 )
 
-var srvConf ServerConf
+var conf Conf
 
-func Get() ServerConf {
-	return srvConf
+func Get() Conf {
+	return conf
 }
 
 type initStructure struct {
@@ -37,9 +39,10 @@ type initStructure struct {
 }
 
 func Parse() error {
-	srvConf = ServerConf{}
+	conf = Conf{}
 	a := flag.String("a", fmt.Sprintf("%s:%s", defaultHost, defaultPort), "HTTP server address")
 	b := flag.String("b", fmt.Sprintf("%s://%s:%s", defaultScheme, defaultHost, defaultPort), "HTTP server base URL")
+	f := flag.String("f", "/tmp/short-url-db.json", "Path to storage file")
 	flag.Parse()
 
 	isa := initStructure{
@@ -63,7 +66,24 @@ func Parse() error {
 	if err != nil {
 		return err
 	}
-	logger.Log.Info(fmt.Sprintf("Result server configuration: %+v\n", srvConf))
+
+	ifs := initStructure{
+		envName: FileStoragePath,
+		argVal:  *f,
+		initFunc: func(s string) error {
+			if s == "" {
+				return errors.New("file storage arg is empty")
+			}
+			conf.fsPath = s
+			return nil
+		},
+	}
+	err = initAppParam(ifs)
+	if err != nil {
+		return err
+	}
+
+	logger.Log.Info(fmt.Sprintf("Result configuration: %+v\n", conf))
 	return nil
 }
 
@@ -86,8 +106,8 @@ func serverAddrFunc() func(s string) error {
 		if err != nil {
 			return fmt.Errorf("serverAddrFunc split host %w", err)
 		}
-		srvConf.host = host
-		srvConf.port = port
+		conf.host = host
+		conf.port = port
 		return nil
 	}
 }
@@ -107,12 +127,12 @@ func baseURLFunc() func(s string) error {
 			return fmt.Errorf("split host %w", err)
 		}
 
-		srvConf.scheme = parsed.Scheme
-		srvConf.host = host
-		srvConf.port = port
-		srvConf.basePath = strings.TrimSuffix(parsed.Path, "/")
+		conf.scheme = parsed.Scheme
+		conf.host = host
+		conf.port = port
+		conf.basePath = strings.TrimSuffix(parsed.Path, "/")
 
-		srvConf.baseURL = strings.TrimSuffix(u, "/")
+		conf.baseURL = strings.TrimSuffix(u, "/")
 		return nil
 	}
 }

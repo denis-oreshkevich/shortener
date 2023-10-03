@@ -18,11 +18,11 @@ const (
 )
 
 type URLHandler struct {
-	conf    config.ServerConf
+	conf    config.Conf
 	storage storage.Storage
 }
 
-func New(conf config.ServerConf, storage storage.Storage) URLHandler {
+func New(conf config.Conf, storage storage.Storage) URLHandler {
 	return URLHandler{
 		conf:    conf,
 		storage: storage,
@@ -42,7 +42,11 @@ func (h URLHandler) Post() func(c *gin.Context) {
 			c.String(http.StatusBadRequest, "Ошибка при валидации тела запроса")
 			return
 		}
-		id := h.storage.SaveURL(bodyURL)
+		id, err := h.storage.SaveURL(bodyURL)
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
 		url := fmt.Sprintf("%s/%s", h.conf.BaseURL(), id)
 		c.String(http.StatusCreated, url)
 	}
@@ -55,8 +59,8 @@ func (h URLHandler) Get() func(c *gin.Context) {
 			c.String(http.StatusBadRequest, "Ошибка при валидации параметра id")
 			return
 		}
-		url, ok := h.storage.FindURL(id)
-		if !ok {
+		url, err := h.storage.FindURL(id)
+		if err != nil {
 			c.String(http.StatusBadRequest, "Не найдено сохраненного URL")
 			return
 		}
@@ -76,16 +80,22 @@ func (h URLHandler) ShortenPost() func(c *gin.Context) {
 		var um URLModel
 		if err := json.Unmarshal(body, &um); err != nil {
 			c.String(http.StatusBadRequest, "Ошибка при десериализации из json")
+			return
 		}
 		if !validator.URL(um.URL) {
 			c.String(http.StatusBadRequest, "Ошибка при валидации url")
 			return
 		}
-		id := h.storage.SaveURL(um.URL)
+		id, err := h.storage.SaveURL(um.URL)
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
 		url := fmt.Sprintf("%s/%s", h.conf.BaseURL(), id)
 		res, err := json.Marshal(NewResult(url))
 		if err != nil {
 			c.String(http.StatusBadRequest, "Ошибка при формировании ответного json")
+			return
 		}
 		c.Header(ContentType, ApplicationJSON)
 		c.String(http.StatusCreated, string(res))
