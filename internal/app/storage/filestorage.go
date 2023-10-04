@@ -94,7 +94,7 @@ func (fs *FileStorage) SaveURL(url string) (string, error) {
 		return "", fmt.Errorf("fileStorage SaveURL, flush file %w", err)
 	}
 
-	fs.cache.saveURL(shURL, url)
+	fs.cache.saveURLNotSync(shURL, url)
 
 	return shURL, nil
 }

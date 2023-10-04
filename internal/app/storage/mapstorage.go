@@ -20,7 +20,9 @@ func NewMapStorage(items map[string]string) *MapStorage {
 
 func (r *MapStorage) SaveURL(url string) (string, error) {
 	id := generator.RandString(8)
-	r.saveURL(id, url)
+	r.mx.Lock()
+	defer r.mx.Unlock()
+	r.saveURLNotSync(id, url)
 	return id, nil
 }
 
@@ -35,9 +37,7 @@ func (r *MapStorage) FindURL(id string) (string, error) {
 	return val, nil
 }
 
-func (r *MapStorage) saveURL(id, url string) {
-	r.mx.Lock()
-	defer r.mx.Unlock()
+func (r *MapStorage) saveURLNotSync(id, url string) {
 	r.items[id] = url
 	logger.Log.Debug(fmt.Sprintf("Saved to cache with id = %s, and value = %s", id, url))
 }
