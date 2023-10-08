@@ -1,9 +1,13 @@
 package server
 
 import (
+	"bytes"
+	"encoding/json"
 	"github.com/denis-oreshkevich/shortener/internal/app/config"
 	"github.com/denis-oreshkevich/shortener/internal/app/handler"
+	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
 	"github.com/stretchr/testify/mock"
+	"go.uber.org/zap"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -101,6 +105,65 @@ func TestGet(t *testing.T) {
 		},
 	}
 	RunSubTests(t, getTests)
+}
+
+func TestShortenPost(t *testing.T) {
+	conf := config.Get()
+	res, err := json.Marshal(handler.NewResult(conf.BaseURL() + "/" + "EEEEEEEE"))
+	if err != nil {
+		logger.Log.Error("marshal json", zap.Error(err))
+	}
+	tests := []test{
+		{
+			name:   "simple ShortenPost test #1",
+			isMock: true,
+			mockOn: func(m *mockedStorage) *mock.Call {
+				return m.On("SaveURL", mock.Anything).Return("EEEEEEEE")
+			},
+			reqFunc: func() *http.Request {
+				url := handler.NewURL("https://practicum.yandex.ru/")
+				marshal, err := json.Marshal(url)
+				if err != nil {
+					logger.Log.Error("marshal json", zap.Error(err))
+				}
+				return httptest.NewRequest("POST", "/api/shorten", bytes.NewReader(marshal))
+			},
+			want: Want{
+				contentType: handler.ApplicationJSON,
+				statusCode:  201,
+				body:        string(res),
+			},
+		},
+		{
+			name:   "empty body url ShortenPost test #2",
+			isMock: false,
+			reqFunc: func() *http.Request {
+				url := handler.NewURL("")
+				marshal, err := json.Marshal(url)
+				if err != nil {
+					logger.Log.Error("marshal json", zap.Error(err))
+				}
+				return httptest.NewRequest("POST", "/api/shorten", bytes.NewReader(marshal))
+			},
+			want: Want{
+				contentType: handler.TextPlain,
+				statusCode:  400,
+			},
+		},
+		{
+			name:   "empty json ShortenPost test #3",
+			isMock: false,
+			reqFunc: func() *http.Request {
+				body := strings.NewReader("{}")
+				return httptest.NewRequest("POST", "/api/shorten", body)
+			},
+			want: Want{
+				contentType: handler.TextPlain,
+				statusCode:  400,
+			},
+		},
+	}
+	RunSubTests(t, tests)
 }
 
 func TestNoRoutes(t *testing.T) {

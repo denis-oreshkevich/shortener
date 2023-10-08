@@ -15,10 +15,11 @@ type Server struct {
 func New(conf config.ServerConf, uh handler.URLHandler) Server {
 	r := gin.New()
 
-	r.Use(gin.Recovery(), Logging)
+	r.Use(Logging, gin.Recovery())
 
 	r.POST(`/`, uh.Post())
 	r.GET(conf.BasePath()+`/:id`, uh.Get())
+	r.POST(`/api/shorten`, uh.ShortenPost())
 	r.NoRoute(uh.NoRoute())
 
 	return Server{
