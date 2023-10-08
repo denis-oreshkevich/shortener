@@ -13,7 +13,9 @@ type Server struct {
 }
 
 func New(conf config.ServerConf, uh handler.URLHandler) Server {
-	r := gin.Default()
+	r := gin.New()
+
+	r.Use(gin.Recovery(), Logging)
 
 	r.POST(`/`, uh.Post())
 	r.GET(conf.BasePath()+`/:id`, uh.Get())
