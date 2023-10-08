@@ -1,29 +1,34 @@
 package config
 
-type ServerConf struct {
+type Conf struct {
 	scheme   string
 	host     string
 	port     string
 	baseURL  string
 	basePath string
+	fsPath   string
 }
 
-func (s ServerConf) Scheme() string {
+func (s Conf) Scheme() string {
 	return s.scheme
 }
 
-func (s ServerConf) Host() string {
+func (s Conf) Host() string {
 	return s.host
 }
 
-func (s ServerConf) Port() string {
+func (s Conf) Port() string {
 	return s.port
 }
 
-func (s ServerConf) BaseURL() string {
+func (s Conf) BaseURL() string {
 	return s.baseURL
 }
 
-func (s ServerConf) BasePath() string {
+func (s Conf) BasePath() string {
 	return s.basePath
+}
+
+func (s Conf) FsPath() string {
+	return s.fsPath
 }

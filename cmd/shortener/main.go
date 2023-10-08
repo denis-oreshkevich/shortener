@@ -26,7 +26,12 @@ func main() {
 
 	conf := config.Get()
 
-	uh := handler.New(conf, storage.NewMapStorage())
+	//uh := handler.New(conf, storage.NewMapStorage(make(map[string]string)))
+	fileStorage, err := storage.NewFileStorage(conf.FsPath())
+	if err != nil {
+		logger.Log.Fatal("initializing storage", zap.Error(err))
+	}
+	uh := handler.New(conf, fileStorage)
 	srv := server.New(conf, uh)
 
 	err = srv.Start()

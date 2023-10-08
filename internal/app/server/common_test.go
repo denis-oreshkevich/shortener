@@ -18,14 +18,14 @@ type mockedStorage struct {
 	mock.Mock
 }
 
-func (m *mockedStorage) SaveURL(url string) string {
+func (m *mockedStorage) SaveURL(url string) (string, error) {
 	args := m.Called(url)
-	return args.String(0)
+	return args.String(0), args.Error(1)
 }
 
-func (m *mockedStorage) FindURL(id string) (string, bool) {
+func (m *mockedStorage) FindURL(id string) (string, error) {
 	args := m.Called(id)
-	return args.String(0), args.Bool(1)
+	return args.String(0), args.Error(1)
 }
 
 type testSrv struct {

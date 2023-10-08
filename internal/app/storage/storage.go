@@ -1,6 +1,6 @@
 package storage
 
 type Storage interface {
-	SaveURL(url string) string
-	FindURL(id string) (string, bool)
+	SaveURL(url string) (string, error)
+	FindURL(id string) (string, error)
 }
