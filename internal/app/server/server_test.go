@@ -2,12 +2,15 @@ package server
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"github.com/denis-oreshkevich/shortener/internal/app/config"
 	"github.com/denis-oreshkevich/shortener/internal/app/handler"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -16,6 +19,14 @@ import (
 
 func TestPost(t *testing.T) {
 	conf := config.Get()
+	tStorage := new(mockedStorage)
+	uh := handler.New(conf, tStorage)
+	s := New(conf, uh)
+
+	srv := httptest.NewServer(s.router)
+	defer srv.Close()
+	tSrv := newTestSrv(srv, tStorage)
+
 	postTests := []test{
 		{
 			name:   "simple Post test #1",
@@ -25,9 +36,11 @@ func TestPost(t *testing.T) {
 			},
 			reqFunc: func() *http.Request {
 				body := strings.NewReader("https://practicum.yandex.ru/")
-				return httptest.NewRequest("POST", "/", body)
+				req := httptest.NewRequest("POST", srv.URL+"/", body)
+				req.RequestURI = ""
+				return req
 			},
-			want: Want{
+			want: want{
 				contentType: handler.TextPlain,
 				statusCode:  201,
 				body:        conf.BaseURL() + "/" + "CCCCCCCC",
@@ -37,9 +50,11 @@ func TestPost(t *testing.T) {
 			name:   "nil body Post test #2",
 			isMock: false,
 			reqFunc: func() *http.Request {
-				return httptest.NewRequest("POST", "/", nil)
+				req := httptest.NewRequest("POST", srv.URL+"/", nil)
+				req.RequestURI = ""
+				return req
 			},
-			want: Want{
+			want: want{
 				contentType: handler.TextPlain,
 				statusCode:  400,
 			},
@@ -49,19 +64,29 @@ func TestPost(t *testing.T) {
 			isMock: false,
 			reqFunc: func() *http.Request {
 				body := strings.NewReader("ahahahah")
-				return httptest.NewRequest("POST", "/", body)
+				req := httptest.NewRequest("POST", srv.URL+"/", body)
+				req.RequestURI = ""
+				return req
 			},
-			want: Want{
+			want: want{
 				contentType: handler.TextPlain,
 				statusCode:  400,
 			},
 		},
 	}
-	RunSubTests(t, postTests)
+	RunSubTests(t, postTests, tSrv)
 }
 
 func TestGet(t *testing.T) {
 	conf := config.Get()
+	tStorage := new(mockedStorage)
+	uh := handler.New(conf, tStorage)
+	s := New(conf, uh)
+
+	srv := httptest.NewServer(s.router)
+	defer srv.Close()
+	tSrv := newTestSrv(srv, tStorage)
+
 	getTests := []test{
 		{
 			name:   "simple Get test #1",
@@ -70,9 +95,11 @@ func TestGet(t *testing.T) {
 				return m.On("FindURL", "AAAAAAAA").Return("http://localhost:30001/", true)
 			},
 			reqFunc: func() *http.Request {
-				return httptest.NewRequest("GET", conf.BasePath()+"/AAAAAAAA", nil)
+				req := httptest.NewRequest("GET", srv.URL+conf.BasePath()+"/AAAAAAAA", nil)
+				req.RequestURI = ""
+				return req
 			},
-			want: Want{
+			want: want{
 				contentType:    handler.TextPlain,
 				statusCode:     307,
 				headerLocation: "http://localhost:30001/",
@@ -82,9 +109,11 @@ func TestGet(t *testing.T) {
 			name:   "bad id Get test #2",
 			isMock: false,
 			reqFunc: func() *http.Request {
-				return httptest.NewRequest("GET", conf.BasePath()+"/HHH", nil)
+				req := httptest.NewRequest("GET", srv.URL+conf.BasePath()+"/HHH", nil)
+				req.RequestURI = ""
+				return req
 			},
-			want: Want{
+			want: want{
 				contentType: handler.TextPlain,
 				statusCode:  400,
 			},
@@ -96,19 +125,29 @@ func TestGet(t *testing.T) {
 				return m.On("FindURL", "HHHHHHHH").Return("", false)
 			},
 			reqFunc: func() *http.Request {
-				return httptest.NewRequest("GET", conf.BasePath()+"/HHHHHHHH", nil)
+				req := httptest.NewRequest("GET", srv.URL+conf.BasePath()+"/HHHHHHHH", nil)
+				req.RequestURI = ""
+				return req
 			},
-			want: Want{
+			want: want{
 				contentType: handler.TextPlain,
 				statusCode:  400,
 			},
 		},
 	}
-	RunSubTests(t, getTests)
+	RunSubTests(t, getTests, tSrv)
 }
 
 func TestShortenPost(t *testing.T) {
 	conf := config.Get()
+	tStorage := new(mockedStorage)
+	uh := handler.New(conf, tStorage)
+	s := New(conf, uh)
+
+	srv := httptest.NewServer(s.router)
+	defer srv.Close()
+	tSrv := newTestSrv(srv, tStorage)
+
 	res, err := json.Marshal(handler.NewResult(conf.BaseURL() + "/" + "EEEEEEEE"))
 	if err != nil {
 		logger.Log.Error("marshal json", zap.Error(err))
@@ -126,9 +165,11 @@ func TestShortenPost(t *testing.T) {
 				if err != nil {
 					logger.Log.Error("marshal json", zap.Error(err))
 				}
-				return httptest.NewRequest("POST", "/api/shorten", bytes.NewReader(marshal))
+				req := httptest.NewRequest("POST", srv.URL+"/api/shorten", bytes.NewReader(marshal))
+				req.RequestURI = ""
+				return req
 			},
-			want: Want{
+			want: want{
 				contentType: handler.ApplicationJSON,
 				statusCode:  201,
 				body:        string(res),
@@ -143,9 +184,11 @@ func TestShortenPost(t *testing.T) {
 				if err != nil {
 					logger.Log.Error("marshal json", zap.Error(err))
 				}
-				return httptest.NewRequest("POST", "/api/shorten", bytes.NewReader(marshal))
+				req := httptest.NewRequest("POST", srv.URL+"/api/shorten", bytes.NewReader(marshal))
+				req.RequestURI = ""
+				return req
 			},
-			want: Want{
+			want: want{
 				contentType: handler.TextPlain,
 				statusCode:  400,
 			},
@@ -155,27 +198,39 @@ func TestShortenPost(t *testing.T) {
 			isMock: false,
 			reqFunc: func() *http.Request {
 				body := strings.NewReader("{}")
-				return httptest.NewRequest("POST", "/api/shorten", body)
+				req := httptest.NewRequest("POST", srv.URL+"/api/shorten", body)
+				req.RequestURI = ""
+				return req
 			},
-			want: Want{
+			want: want{
 				contentType: handler.TextPlain,
 				statusCode:  400,
 			},
 		},
 	}
-	RunSubTests(t, tests)
+	RunSubTests(t, tests, tSrv)
 }
 
 func TestNoRoutes(t *testing.T) {
 	conf := config.Get()
+	tStorage := new(mockedStorage)
+	uh := handler.New(conf, tStorage)
+	s := New(conf, uh)
+
+	srv := httptest.NewServer(s.router)
+	defer srv.Close()
+	tSrv := newTestSrv(srv, tStorage)
+
 	tests := []test{
 		{
 			name:   "bad url Get test '/test/AAAAAAAA' #1",
 			isMock: false,
 			reqFunc: func() *http.Request {
-				return httptest.NewRequest("GET", conf.BasePath()+"/test/AAAAAAAA", nil)
+				req := httptest.NewRequest("GET", tSrv.URL+conf.BasePath()+"/test/AAAAAAAA", nil)
+				req.RequestURI = ""
+				return req
 			},
-			want: Want{
+			want: want{
 				contentType: handler.TextPlain,
 				statusCode:  400,
 			},
@@ -185,9 +240,11 @@ func TestNoRoutes(t *testing.T) {
 			isMock: false,
 			reqFunc: func() *http.Request {
 				body := strings.NewReader("https://practicum.yandex.ru/")
-				return httptest.NewRequest("POST", "/test", body)
+				req := httptest.NewRequest("POST", tSrv.URL+"/test", body)
+				req.RequestURI = ""
+				return req
 			},
-			want: Want{
+			want: want{
 				contentType: handler.TextPlain,
 				statusCode:  400,
 			},
@@ -197,13 +254,96 @@ func TestNoRoutes(t *testing.T) {
 			isMock: false,
 			reqFunc: func() *http.Request {
 				body := strings.NewReader("https://practicum.yandex.ru/")
-				return httptest.NewRequest("DELETE", "/", body)
+				req := httptest.NewRequest("DELETE", tSrv.URL+"/", body)
+				req.RequestURI = ""
+				return req
 			},
-			want: Want{
+			want: want{
 				contentType: handler.TextPlain,
 				statusCode:  400,
 			},
 		},
 	}
-	RunSubTests(t, tests)
+	RunSubTests(t, tests, tSrv)
+}
+
+func TestGzipCompression(t *testing.T) {
+	conf := config.Get()
+	tStorage := new(mockedStorage)
+	tStorage.On("SaveURL", mock.Anything).Return("MMMMMMMM")
+	uh := handler.New(conf, tStorage)
+	s := New(conf, uh)
+
+	srv := httptest.NewServer(s.router)
+	defer srv.Close()
+
+	requestBody := `{
+    	"url": "https://practicum.yandex.ru/"
+	}`
+
+	successBody := `{
+        "result":"` + conf.BaseURL() + "/MMMMMMMM" + `"
+	}`
+
+	t.Run("sends_gzip_json", func(t *testing.T) {
+		buf := bytes.NewBuffer(nil)
+		zb := gzip.NewWriter(buf)
+		_, err := zb.Write([]byte(requestBody))
+		require.NoError(t, err)
+		err = zb.Close()
+		require.NoError(t, err)
+
+		r := httptest.NewRequest("POST", srv.URL+"/api/shorten", buf)
+		r.RequestURI = ""
+		r.Header.Set("Content-Encoding", "gzip")
+
+		resp, err := http.DefaultClient.Do(r)
+		require.NoError(t, err)
+
+		require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+		defer resp.Body.Close()
+
+		b, err := io.ReadAll(resp.Body)
+
+		require.NoError(t, err)
+		require.JSONEq(t, successBody, string(b))
+	})
+
+	t.Run("accepts_gzip_json", func(t *testing.T) {
+		buf := bytes.NewBufferString(requestBody)
+		r := httptest.NewRequest("POST", srv.URL+"/api/shorten", buf)
+		r.RequestURI = ""
+		r.Header.Set("Accept-Encoding", "gzip")
+
+		resp, err := http.DefaultClient.Do(r)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, resp.StatusCode)
+		defer resp.Body.Close()
+
+		zr, err := gzip.NewReader(resp.Body)
+		require.NoError(t, err)
+
+		b, err := io.ReadAll(zr)
+		require.NoError(t, err)
+
+		require.JSONEq(t, successBody, string(b))
+	})
+	t.Run("accepts_gzip_text", func(t *testing.T) {
+		buf := bytes.NewBufferString("https://practicum.yandex.ru/")
+		r := httptest.NewRequest("POST", srv.URL, buf)
+		r.RequestURI = ""
+		r.Header.Set("Accept-Encoding", "gzip")
+
+		resp, err := http.DefaultClient.Do(r)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+		defer resp.Body.Close()
+
+		b, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		println(string(b))
+		require.True(t, IDURLRegex.MatchString(string(b)))
+	})
 }
