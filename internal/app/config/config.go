@@ -93,16 +93,7 @@ func Parse() error {
 			if s == "" {
 				return errors.New("database DSN is empty")
 			}
-			if !strings.Contains(s, "host") {
-				return errors.New("database DSN doesn't contains 'host'")
-			}
-			if !strings.Contains(s, "user") {
-				return errors.New("database DSN doesn't contains 'user'")
-			}
-			if !strings.Contains(s, "password") {
-				return errors.New("database DSN doesn't contains 'password'")
-			}
-			conf.dbDSN = s
+			conf.databaseDSN = s
 			return nil
 		},
 	}
