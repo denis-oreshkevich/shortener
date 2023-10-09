@@ -45,9 +45,12 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("initializing db storage %w", err)
 	}
+	defer dbStorage.Close()
 
 	ph := handler.NewPingHandler(dbStorage)
-	srv := server.New(conf, uh, ph)
+	srv := server.New(conf, uh)
+
+	srv.AddPing(ph)
 
 	err = srv.Start()
 	if err != nil {
