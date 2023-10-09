@@ -7,6 +7,7 @@ type Conf struct {
 	baseURL  string
 	basePath string
 	fsPath   string
+	dbDSN    string
 }
 
 func (s Conf) Scheme() string {
@@ -31,4 +32,8 @@ func (s Conf) BasePath() string {
 
 func (s Conf) FsPath() string {
 	return s.fsPath
+}
+
+func (s Conf) DbDSN() string {
+	return s.dbDSN
 }

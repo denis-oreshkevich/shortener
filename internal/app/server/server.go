@@ -12,7 +12,7 @@ type Server struct {
 	router *gin.Engine
 }
 
-func New(conf config.Conf, uh handler.URLHandler) Server {
+func New(conf config.Conf, uh handler.URLHandler, ph handler.PingHandler) Server {
 	r := gin.New()
 
 	r.Use(gin.Recovery(), Gzip, Logging)
@@ -20,6 +20,9 @@ func New(conf config.Conf, uh handler.URLHandler) Server {
 	r.POST(`/`, uh.Post())
 	r.GET(conf.BasePath()+`/:id`, uh.Get())
 	r.POST(`/api/shorten`, uh.ShortenPost())
+
+	r.GET(`/ping`, ph.Ping())
+
 	r.NoRoute(uh.NoRoute())
 
 	return Server{

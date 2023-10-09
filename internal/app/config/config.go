@@ -19,6 +19,8 @@ const (
 
 	FileStoragePath = "FILE_STORAGE_PATH"
 
+	DatabaseDSN = "DATABASE_DSN"
+
 	defaultHost = "localhost"
 
 	defaultPort = "8080"
@@ -43,6 +45,7 @@ func Parse() error {
 	a := flag.String("a", fmt.Sprintf("%s:%s", defaultHost, defaultPort), "HTTP server address")
 	b := flag.String("b", fmt.Sprintf("%s://%s:%s", defaultScheme, defaultHost, defaultPort), "HTTP server base URL")
 	f := flag.String("f", "/tmp/short-url-db.json", "Path to storage file")
+	d := flag.String("d", "host=localhost port=5433 user=postgres password=postgres dbname=courses sslmode=disable", "Database connection")
 	flag.Parse()
 
 	isa := initStructure{
@@ -79,6 +82,31 @@ func Parse() error {
 		},
 	}
 	err = initAppParam(ifs)
+	if err != nil {
+		return err
+	}
+
+	idb := initStructure{
+		envName: DatabaseDSN,
+		argVal:  *d,
+		initFunc: func(s string) error {
+			if s == "" {
+				return errors.New("database DSN is empty")
+			}
+			if !strings.Contains(s, "host") {
+				return errors.New("database DSN doesn't contains 'host'")
+			}
+			if !strings.Contains(s, "user") {
+				return errors.New("database DSN doesn't contains 'user'")
+			}
+			if !strings.Contains(s, "password") {
+				return errors.New("database DSN doesn't contains 'password'")
+			}
+			conf.dbDSN = s
+			return nil
+		},
+	}
+	err = initAppParam(idb)
 	if err != nil {
 		return err
 	}
