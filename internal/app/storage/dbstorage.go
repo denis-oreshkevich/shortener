@@ -12,7 +12,7 @@ type DBStorage struct {
 	db *sql.DB
 }
 
-//var _ Storage = (*FileStorage)(nil)
+var _ Storage = (*DBStorage)(nil)
 
 func NewDBStorage(dbDSN string) (*DBStorage, error) {
 	db, err := sql.Open("pgx", dbDSN)
