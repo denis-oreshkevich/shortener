@@ -44,7 +44,9 @@ func Parse() error {
 	conf = Conf{}
 	a := flag.String("a", fmt.Sprintf("%s:%s", defaultHost, defaultPort), "HTTP server address")
 	b := flag.String("b", fmt.Sprintf("%s://%s:%s", defaultScheme, defaultHost, defaultPort), "HTTP server base URL")
-	f := flag.String("f", "/tmp/short-url-db.json", "Path to storage file")
+	// /tmp/short-url-db.json
+	f := flag.String("f", "", "Path to storage file")
+	//host=localhost port=5433 user=postgres password=postgres dbname=courses sslmode=disable
 	d := flag.String("d", "host=localhost port=5433 user=postgres password=postgres dbname=courses sslmode=disable", "Database connection")
 	flag.Parse()
 
