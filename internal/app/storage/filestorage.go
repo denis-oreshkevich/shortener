@@ -107,7 +107,7 @@ func (fs *FileStorage) SaveURLBatch(ctx context.Context, batch []model.BatchReqE
 			return nil, fmt.Errorf("fileStorage SaveURLBatch. write byte %w", err)
 		}
 		fs.cache.saveURLNotSync(shURL, b.OriginalURL)
-		resp := model.NewBatchRespEntry(b.CorrelationId, shURL)
+		resp := model.NewBatchRespEntry(b.CorrelationID, shURL)
 		bResp = append(bResp, resp)
 	}
 	if err := fs.rw.Flush(); err != nil {

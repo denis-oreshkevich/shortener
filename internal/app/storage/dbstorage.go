@@ -69,7 +69,7 @@ func (ds *DBStorage) SaveURLBatch(ctx context.Context, batch []model.BatchReqEnt
 		if err != nil {
 			return nil, fmt.Errorf("execContext. %w", err)
 		}
-		var resp = model.NewBatchRespEntry(b.CorrelationId, sh)
+		var resp = model.NewBatchRespEntry(b.CorrelationID, sh)
 		bResp = append(bResp, resp)
 	}
 	err = tx.Commit()

@@ -35,7 +35,7 @@ func (ms *MapStorage) SaveURLBatch(ctx context.Context, batch []model.BatchReqEn
 	for _, b := range batch {
 		sh := generator.RandString(8)
 		ms.saveURLNotSync(sh, b.OriginalURL)
-		bResp = append(bResp, model.NewBatchRespEntry(b.CorrelationId, sh))
+		bResp = append(bResp, model.NewBatchRespEntry(b.CorrelationID, sh))
 	}
 	return bResp, nil
 }
