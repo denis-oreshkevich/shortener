@@ -1,7 +1,9 @@
-package server
+package main
 
 import (
+	"context"
 	"github.com/denis-oreshkevich/shortener/internal/app/config"
+	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -18,13 +20,18 @@ type mockedStorage struct {
 	mock.Mock
 }
 
-func (m *mockedStorage) SaveURL(url string) (string, error) {
-	args := m.Called(url)
+func (m *mockedStorage) SaveURL(ctx context.Context, url string) (string, error) {
+	args := m.Called(ctx, url)
 	return args.String(0), args.Error(1)
 }
 
-func (m *mockedStorage) FindURL(id string) (string, error) {
-	args := m.Called(id)
+func (m *mockedStorage) SaveURLBatch(ctx context.Context, batch []model.BatchReqEntry) ([]model.BatchRespEntry, error) {
+	args := m.Called(ctx, batch)
+	return args.Get(0).([]model.BatchRespEntry), args.Error(1)
+}
+
+func (m *mockedStorage) FindURL(ctx context.Context, id string) (string, error) {
+	args := m.Called(ctx, id)
 	return args.String(0), args.Error(1)
 }
 

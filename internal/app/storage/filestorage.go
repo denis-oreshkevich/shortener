@@ -2,9 +2,11 @@ package storage
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/generator"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
 	"io"
@@ -30,7 +32,7 @@ func NewFileStorage(filename string) (*FileStorage, error) {
 	}
 	rw := bufio.NewReadWriter(bufio.NewReader(file), bufio.NewWriter(file))
 	items := make(map[string]string)
-	var shr = &Shortener{}
+	var shr = &model.Shortener{}
 	var line int64 = 0
 	for {
 		data, err := rw.ReadBytes('\n')
@@ -59,10 +61,10 @@ func NewFileStorage(filename string) (*FileStorage, error) {
 	}, nil
 }
 
-func (fs *FileStorage) SaveURL(url string) (string, error) {
+func (fs *FileStorage) SaveURL(ctx context.Context, url string) (string, error) {
 	id := atomic.AddInt64(&fs.inc, 1)
 	shURL := generator.RandString(8)
-	shorten := newShortener(id, shURL, url)
+	shorten := model.NewShortener(id, shURL, url)
 	marsh, err := json.Marshal(shorten)
 	if err != nil {
 		return "", fmt.Errorf("fileStorage SaveURL, marshal json %w", err)
@@ -85,8 +87,37 @@ func (fs *FileStorage) SaveURL(url string) (string, error) {
 	return shURL, nil
 }
 
-func (fs *FileStorage) FindURL(shortURL string) (string, error) {
-	return fs.cache.FindURL(shortURL)
+func (fs *FileStorage) SaveURLBatch(ctx context.Context, batch []model.BatchReqEntry) ([]model.BatchRespEntry, error) {
+	var bResp []model.BatchRespEntry
+	fs.mx.Lock()
+	defer fs.mx.Unlock()
+	for _, b := range batch {
+		id := atomic.AddInt64(&fs.inc, 1)
+		shURL := generator.RandString(8)
+		shorten := model.NewShortener(id, shURL, b.OriginalURL)
+		marsh, err := json.Marshal(shorten)
+		if err != nil {
+			return nil, fmt.Errorf("fileStorage SaveURLBatch, marshal json %w", err)
+		}
+
+		if _, err = fs.rw.Write(marsh); err != nil {
+			return nil, fmt.Errorf("fileStorage SaveURLBatch. save to file %w", err)
+		}
+		if err = fs.rw.WriteByte('\n'); err != nil {
+			return nil, fmt.Errorf("fileStorage SaveURLBatch. write byte %w", err)
+		}
+		fs.cache.saveURLNotSync(shURL, b.OriginalURL)
+		resp := model.NewBatchRespEntry(b.CorrelationId, shURL)
+		bResp = append(bResp, resp)
+	}
+	if err := fs.rw.Flush(); err != nil {
+		return nil, fmt.Errorf("fileStorage SaveURLBatch. flush file %w", err)
+	}
+	return bResp, nil
+}
+
+func (fs *FileStorage) FindURL(ctx context.Context, shortURL string) (string, error) {
+	return fs.cache.FindURL(ctx, shortURL)
 }
 
 func (fs *FileStorage) Close() error {
