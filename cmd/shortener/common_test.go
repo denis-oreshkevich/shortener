@@ -14,7 +14,7 @@ import (
 	"testing"
 )
 
-var IDURLRegex = regexp.MustCompile(config.Get().BaseURL() + "/[A-Za-z0-9]$")
+var IDURLRegex = regexp.MustCompile(config.Get().BaseURL() + "/[A-Za-z0-9]{8}$")
 
 type mockedStorage struct {
 	mock.Mock
