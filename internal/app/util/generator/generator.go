@@ -9,7 +9,7 @@ func init() {
 	rand.NewSource(time.Now().UnixNano())
 }
 
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
 
 func RandString(n int) string {
 	b := make([]rune, n)
