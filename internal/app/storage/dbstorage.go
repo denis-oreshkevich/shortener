@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/generator"
+	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -63,9 +64,10 @@ func (ds *DBStorage) SaveURLBatch(ctx context.Context, batch []model.BatchReqEnt
 	}
 	defer stmt.Close()
 	var bResp []model.BatchRespEntry
+	var sh string
 	for _, b := range batch {
-		sh := generator.RandString(8)
-
+		sh = generator.RandString(8)
+		logger.Log.Info("generated ID is " + string(sh))
 		_, err = stmt.ExecContext(ctx, sh, b.OriginalURL)
 		if err != nil {
 			return nil, fmt.Errorf("execContext. %w", err)
