@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
 	"math/rand"
 	"time"
 )
@@ -12,5 +13,6 @@ func RandString(length int) string {
 	for i := 0; i < length; i++ {
 		result[i] = characters[rand.Intn(len(characters))]
 	}
+	logger.Log.Info("generated ID is " + string(result))
 	return string(result)
 }
