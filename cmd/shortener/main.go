@@ -34,7 +34,7 @@ func run() error {
 
 	var s storage.Storage
 	if conf.DatabaseDSN() != "" {
-		dbStorage, err := storage.NewDBStorage(conf.DatabaseDSN())
+		dbStorage, err := storage.NewDBStorage(conf.DatabaseDSN(), conf)
 		if err != nil {
 			return fmt.Errorf("initializing db storage %w", err)
 		}

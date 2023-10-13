@@ -4,23 +4,28 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/denis-oreshkevich/shortener/internal/app/config"
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/generator"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type DBStorage struct {
-	db *sql.DB
+	db   *sql.DB
+	conf config.Conf
 }
 
 var _ Storage = (*DBStorage)(nil)
 
-func NewDBStorage(dbDSN string) (*DBStorage, error) {
+func NewDBStorage(dbDSN string, conf config.Conf) (*DBStorage, error) {
 	db, err := sql.Open("pgx", dbDSN)
 	if err != nil {
 		return nil, fmt.Errorf("NewDBStorage, Open %w", err)
 	}
-	return &DBStorage{db: db}, nil
+	return &DBStorage{
+		db:   db,
+		conf: conf,
+	}, nil
 }
 
 func (ds *DBStorage) SaveURL(ctx context.Context, url string) (string, error) {
@@ -70,7 +75,8 @@ func (ds *DBStorage) SaveURLBatch(ctx context.Context, batch []model.BatchReqEnt
 		if err != nil {
 			return nil, fmt.Errorf("execContext. %w", err)
 		}
-		var resp = model.NewBatchRespEntry(b.CorrelationID, sh)
+		url := fmt.Sprintf("%s/%s", ds.conf.BaseURL(), sh)
+		var resp = model.NewBatchRespEntry(b.CorrelationID, url)
 		bResp = append(bResp, resp)
 	}
 	err = tx.Commit()
