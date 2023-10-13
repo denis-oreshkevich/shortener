@@ -220,8 +220,8 @@ func TestShortenBatch(t *testing.T) {
 	tSrv := newTestSrv(srv, tStorage)
 
 	bResp := make([]model.BatchRespEntry, 2)
-	b0 := model.NewBatchRespEntry("123", "EEEEEEEE")
-	b1 := model.NewBatchRespEntry("321", "JJJJJJJJ")
+	b0 := model.NewBatchRespEntry("123", conf.BaseURL()+"/"+"EEEEEEEE")
+	b1 := model.NewBatchRespEntry("321", conf.BaseURL()+"/"+"JJJJJJJJ")
 	bResp[0] = b0
 	bResp[1] = b1
 	exp, err := json.Marshal(bResp)
@@ -231,7 +231,7 @@ func TestShortenBatch(t *testing.T) {
 	}
 	tests := []test{
 		{
-			name:   "simple ShortenPost test #1",
+			name:   "simple ShortenBatch test #1",
 			isMock: true,
 			mockOn: func(m *mockedStorage) *mock.Call {
 				return m.On("SaveURLBatch", mock.Anything, mock.Anything).Return(bResp, nil)
@@ -257,7 +257,7 @@ func TestShortenBatch(t *testing.T) {
 			},
 		},
 		{
-			name:   "empty json ShortenPost test #3",
+			name:   "empty json ShortenBatch test #2",
 			isMock: false,
 			reqFunc: func() *http.Request {
 				body := strings.NewReader("{}")
