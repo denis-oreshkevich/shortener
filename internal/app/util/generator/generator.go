@@ -7,12 +7,12 @@ import (
 )
 
 func RandString(length int) string {
-	rand.New(rand.NewSource(time.Now().UnixNano()))
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	characters := `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789`
 	result := make([]byte, length)
 	for i := 0; i < length; i++ {
-		result[i] = characters[rand.Intn(len(characters))]
+		result[i] = characters[r.Intn(len(characters))]
 	}
-	logger.Log.Info("generated ID is " + string(result))
+	logger.Log.Debug("generated ID is " + string(result))
 	return string(result)
 }
