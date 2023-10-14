@@ -50,7 +50,7 @@ func (ds *DBStorage) SaveURL(ctx context.Context, url string) (string, error) {
 		err = ErrDBConflict
 	}
 
-	return sh, err
+	return res, err
 }
 
 func (ds *DBStorage) SaveURLBatch(ctx context.Context, batch []model.BatchReqEntry) ([]model.BatchRespEntry, error) {
