@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/denis-oreshkevich/shortener/internal/app/config"
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
@@ -48,6 +49,12 @@ func (s Server) Post(c *gin.Context) {
 	}
 	id, err := s.storage.SaveURL(c.Request.Context(), bodyURL)
 	if err != nil {
+		if errors.Is(err, storage.ErrDBConflict) {
+			logger.Log.Info(fmt.Sprintf("saveURL conflict on original url = %s", bodyURL))
+			url := fmt.Sprintf("%s/%s", s.conf.BaseURL(), id)
+			c.String(409, url)
+			return
+		}
 		logger.Log.Error("saveURL", zap.Error(err))
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
@@ -94,6 +101,12 @@ func (s Server) ShortenPost(c *gin.Context) {
 	}
 	id, err := s.storage.SaveURL(req.Context(), um.URL)
 	if err != nil {
+		if errors.Is(err, storage.ErrDBConflict) {
+			logger.Log.Info(fmt.Sprintf("saveURL conflict on original url = %s", um.URL))
+			url := fmt.Sprintf("%s/%s", s.conf.BaseURL(), id)
+			c.String(409, url)
+			return
+		}
 		logger.Log.Error("saveURL", zap.Error(err))
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
