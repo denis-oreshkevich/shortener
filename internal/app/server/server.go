@@ -52,7 +52,7 @@ func (s Server) Post(c *gin.Context) {
 		if errors.Is(err, storage.ErrDBConflict) {
 			logger.Log.Info(fmt.Sprintf("saveURL conflict on original url = %s", bodyURL))
 			url := fmt.Sprintf("%s/%s", s.conf.BaseURL(), id)
-			c.String(409, url)
+			c.String(http.StatusConflict, url)
 			return
 		}
 		logger.Log.Error("saveURL", zap.Error(err))
@@ -103,43 +103,34 @@ func (s Server) ShortenPost(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, storage.ErrDBConflict) {
 			logger.Log.Info(fmt.Sprintf("saveURL conflict on original url = %s", um.URL))
-			url := fmt.Sprintf("%s/%s", s.conf.BaseURL(), id)
-			c.String(409, url)
+			s.sendJSONResultResp(c, id, http.StatusConflict)
 			return
 		}
 		logger.Log.Error("saveURL", zap.Error(err))
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	url := fmt.Sprintf("%s/%s", s.conf.BaseURL(), id)
-	res, err := json.Marshal(NewResult(url))
-	if err != nil {
-		logger.Log.Error("marshal response", zap.Error(err))
-		c.String(http.StatusBadRequest, "Ошибка при формировании ответного json")
-		return
-	}
-	c.Header(ContentType, ApplicationJSON)
-	c.String(http.StatusCreated, string(res))
+	s.sendJSONResultResp(c, id, http.StatusCreated)
 }
 
 func (s Server) Ping(c *gin.Context) {
 	st, ok := s.storage.(*storage.DBStorage)
 	if !ok {
 		logger.Log.Error("ping() is not DB storage")
-		c.AbortWithStatus(500)
+		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 	err := st.Ping(c.Request.Context())
 	if err != nil {
 		logger.Log.Error("ping() dbStorage.Ping()", zap.Error(err))
-		c.AbortWithError(500, err)
+		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 	c.AbortWithStatus(http.StatusOK)
 }
 
 func (s Server) NoRoute(c *gin.Context) {
-	c.Data(400, TextPlain, []byte("Роут не найден"))
+	c.Data(http.StatusBadRequest, TextPlain, []byte("Роут не найден"))
 }
 
 func (s Server) ShortenBatch(c *gin.Context) {
@@ -170,9 +161,21 @@ func (s Server) ShortenBatch(c *gin.Context) {
 	resp, err := json.Marshal(respEntries)
 	if err != nil {
 		logger.Log.Error("marshal response", zap.Error(err))
-		c.String(http.StatusBadRequest, "Ошибка при формировании ответного json")
+		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 	c.Header(ContentType, ApplicationJSON)
 	c.String(http.StatusCreated, string(resp))
+}
+
+func (s Server) sendJSONResultResp(c *gin.Context, id string, status int) {
+	url := fmt.Sprintf("%s/%s", s.conf.BaseURL(), id)
+	resp, err := json.Marshal(NewResult(url))
+	if err != nil {
+		logger.Log.Error("buildJSONResp", zap.Error(err))
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	c.Header(ContentType, ApplicationJSON)
+	c.String(status, string(resp))
 }
