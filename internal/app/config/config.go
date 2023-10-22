@@ -44,8 +44,10 @@ func Parse() error {
 	conf = Conf{}
 	a := flag.String("a", fmt.Sprintf("%s:%s", defaultHost, defaultPort), "HTTP server address")
 	b := flag.String("b", fmt.Sprintf("%s://%s:%s", defaultScheme, defaultHost, defaultPort), "HTTP server base URL")
-	f := flag.String("f", "/tmp/short-url-db.json", "Path to storage file")
-	d := flag.String("d", "host=localhost port=5433 user=postgres password=postgres dbname=courses sslmode=disable", "Database connection")
+	// /tmp/short-url-db.json
+	f := flag.String("f", "", "Path to storage file")
+	//host=localhost port=5433 user=postgres password=postgres dbname=courses sslmode=disable
+	d := flag.String("d", "", "Database connection")
 	flag.Parse()
 
 	isa := initStructure{
@@ -74,9 +76,6 @@ func Parse() error {
 		envName: FileStoragePath,
 		argVal:  *f,
 		initFunc: func(s string) error {
-			if s == "" {
-				return errors.New("file storage arg is empty")
-			}
 			conf.fsPath = s
 			return nil
 		},
@@ -90,9 +89,6 @@ func Parse() error {
 		envName: DatabaseDSN,
 		argVal:  *d,
 		initFunc: func(s string) error {
-			if s == "" {
-				return errors.New("database DSN is empty")
-			}
 			conf.databaseDSN = s
 			return nil
 		},
