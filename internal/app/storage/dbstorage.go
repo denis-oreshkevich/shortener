@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/denis-oreshkevich/shortener/internal/app/config"
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
@@ -17,6 +18,8 @@ type DBStorage struct {
 
 var _ Storage = (*DBStorage)(nil)
 
+var ErrDBConflict = errors.New("db conflict while executing sql query")
+
 func NewDBStorage(dbDSN string, conf config.Conf) (*DBStorage, error) {
 	db, err := sql.Open("pgx", dbDSN)
 	if err != nil {
@@ -29,29 +32,27 @@ func NewDBStorage(dbDSN string, conf config.Conf) (*DBStorage, error) {
 }
 
 func (ds *DBStorage) SaveURL(ctx context.Context, url string) (string, error) {
-	tx, err := ds.db.BeginTx(ctx, nil)
-	if err != nil {
-		return "", fmt.Errorf("begin tx. %w", err)
-	}
-	defer tx.Rollback()
-
-	stmt, err := tx.PrepareContext(ctx, "INSERT INTO courses.shortener "+
-		"(short_url, original_url) VALUES ($1, $2)")
+	stmt, err := ds.db.PrepareContext(ctx, "WITH new_row AS ("+
+		"INSERT INTO courses.shortener(short_url, original_url) VALUES ($1, $2) "+
+		"ON CONFLICT (original_url) DO NOTHING RETURNING short_url) "+
+		"SELECT short_url FROM new_row UNION SELECT short_url FROM courses.shortener "+
+		"WHERE courses.shortener.original_url = $2")
 	if err != nil {
 		return "", fmt.Errorf("prepare context. %w", err)
 	}
 	defer stmt.Close()
 
 	sh := generator.RandString(8)
-	_, err = stmt.ExecContext(ctx, sh, url)
-	if err != nil {
-		return "", fmt.Errorf("execContext. %w", err)
+	row := stmt.QueryRowContext(ctx, sh, url)
+	var res string
+	if err = row.Scan(&res); err != nil {
+		return "", fmt.Errorf("cannot scan value. %w", err)
 	}
-	err = tx.Commit()
-	if err != nil {
-		return "", fmt.Errorf("tx commit. %w", err)
+	if sh != res {
+		err = ErrDBConflict
 	}
-	return sh, nil
+
+	return res, err
 }
 
 func (ds *DBStorage) SaveURLBatch(ctx context.Context, batch []model.BatchReqEntry) ([]model.BatchRespEntry, error) {
@@ -60,9 +61,12 @@ func (ds *DBStorage) SaveURLBatch(ctx context.Context, batch []model.BatchReqEnt
 		return nil, fmt.Errorf("begin tx. %w", err)
 	}
 	defer tx.Rollback()
+	stmt, err := tx.PrepareContext(ctx, "WITH new_row AS ("+
+		"INSERT INTO courses.shortener(short_url, original_url) VALUES ($1, $2) "+
+		"ON CONFLICT (original_url) DO NOTHING RETURNING short_url) "+
+		"SELECT short_url FROM new_row UNION SELECT short_url FROM courses.shortener "+
+		"WHERE courses.shortener.original_url = $2")
 
-	stmt, err := tx.PrepareContext(ctx, "INSERT INTO courses.shortener "+
-		"(short_url, original_url) VALUES ($1, $2)")
 	if err != nil {
 		return nil, fmt.Errorf("prepare context. %w", err)
 	}
@@ -71,14 +75,15 @@ func (ds *DBStorage) SaveURLBatch(ctx context.Context, batch []model.BatchReqEnt
 	var sh string
 	for _, b := range batch {
 		sh = generator.RandString(8)
-		_, err = stmt.ExecContext(ctx, sh, b.OriginalURL)
-		if err != nil {
-			return nil, fmt.Errorf("execContext. %w", err)
+		row := stmt.QueryRowContext(ctx, sh, b.OriginalURL)
+		if err := row.Scan(&sh); err != nil {
+			return nil, fmt.Errorf("cannot scan value. %w", err)
 		}
 		url := fmt.Sprintf("%s/%s", ds.conf.BaseURL(), sh)
 		var resp = model.NewBatchRespEntry(b.CorrelationID, url)
 		bResp = append(bResp, resp)
 	}
+
 	err = tx.Commit()
 	if err != nil {
 		return nil, fmt.Errorf("tx commit. %w", err)
