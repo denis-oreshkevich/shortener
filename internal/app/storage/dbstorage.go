@@ -32,9 +32,11 @@ func NewDBStorage(dbDSN string, conf config.Conf) (*DBStorage, error) {
 }
 
 func (ds *DBStorage) SaveURL(ctx context.Context, url string) (string, error) {
-	stmt, err := ds.db.PrepareContext(ctx, "INSERT INTO courses.shortener (short_url, original_url) "+
-		"VALUES ($1, $2) ON CONFLICT (original_url) DO UPDATE SET original_url = excluded.original_url "+
-		"RETURNING short_url")
+	stmt, err := ds.db.PrepareContext(ctx, "WITH new_row AS ("+
+		"INSERT INTO courses.shortener(short_url, original_url) VALUES ($1, $2) "+
+		"ON CONFLICT (original_url) DO NOTHING RETURNING short_url) "+
+		"SELECT short_url FROM new_row UNION SELECT short_url FROM courses.shortener "+
+		"WHERE courses.shortener.original_url = $2")
 	if err != nil {
 		return "", fmt.Errorf("prepare context. %w", err)
 	}
@@ -59,10 +61,11 @@ func (ds *DBStorage) SaveURLBatch(ctx context.Context, batch []model.BatchReqEnt
 		return nil, fmt.Errorf("begin tx. %w", err)
 	}
 	defer tx.Rollback()
-
-	stmt, err := tx.PrepareContext(ctx, "INSERT INTO courses.shortener (short_url, original_url) "+
-		"VALUES ($1, $2) ON CONFLICT (original_url) DO UPDATE SET original_url = excluded.original_url "+
-		"RETURNING short_url")
+	stmt, err := tx.PrepareContext(ctx, "WITH new_row AS ("+
+		"INSERT INTO courses.shortener(short_url, original_url) VALUES ($1, $2) "+
+		"ON CONFLICT (original_url) DO NOTHING RETURNING short_url) "+
+		"SELECT short_url FROM new_row UNION SELECT short_url FROM courses.shortener "+
+		"WHERE courses.shortener.original_url = $2")
 
 	if err != nil {
 		return nil, fmt.Errorf("prepare context. %w", err)

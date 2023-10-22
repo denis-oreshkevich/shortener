@@ -32,7 +32,7 @@ func NewFileStorage(filename string) (*FileStorage, error) {
 	}
 	rw := bufio.NewReadWriter(bufio.NewReader(file), bufio.NewWriter(file))
 	items := make(map[string]string)
-	var shr = &model.Shortener{}
+	var shr = &FSModel{}
 	var line int64 = 0
 	for {
 		data, err := rw.ReadBytes('\n')
@@ -64,7 +64,7 @@ func NewFileStorage(filename string) (*FileStorage, error) {
 func (fs *FileStorage) SaveURL(ctx context.Context, url string) (string, error) {
 	id := atomic.AddInt64(&fs.inc, 1)
 	shURL := generator.RandString(8)
-	shorten := model.NewShortener(id, shURL, url)
+	shorten := NewFSModel(id, shURL, url)
 	marsh, err := json.Marshal(shorten)
 	if err != nil {
 		return "", fmt.Errorf("fileStorage SaveURL, marshal json %w", err)
@@ -94,7 +94,7 @@ func (fs *FileStorage) SaveURLBatch(ctx context.Context, batch []model.BatchReqE
 	for _, b := range batch {
 		id := atomic.AddInt64(&fs.inc, 1)
 		shURL := generator.RandString(8)
-		shorten := model.NewShortener(id, shURL, b.OriginalURL)
+		shorten := NewFSModel(id, shURL, b.OriginalURL)
 		marsh, err := json.Marshal(shorten)
 		if err != nil {
 			return nil, fmt.Errorf("fileStorage SaveURLBatch, marshal json %w", err)

@@ -26,8 +26,8 @@ type Server struct {
 	storage storage.Storage
 }
 
-func New(conf config.Conf, st storage.Storage) Server {
-	return Server{
+func New(conf config.Conf, st storage.Storage) *Server {
+	return &Server{
 		conf:    conf,
 		storage: st,
 	}
@@ -65,14 +65,15 @@ func (s Server) Post(c *gin.Context) {
 
 func (s Server) Get(c *gin.Context) {
 	id := c.Param("id")
+	log := logger.Log.With(zap.String("id", id))
 	if !validator.ID(id) {
-		logger.Log.Warn(fmt.Sprintf("validate ID %s", id))
+		log.Warn(fmt.Sprintf("validate ID %s", id))
 		c.String(http.StatusBadRequest, "Ошибка при валидации параметра id")
 		return
 	}
 	url, err := s.storage.FindURL(c.Request.Context(), id)
 	if err != nil {
-		logger.Log.Error("findURL", zap.Error(err))
+		log.Error("findURL", zap.Error(err))
 		c.String(http.StatusBadRequest, "Не найдено сохраненного URL")
 		return
 	}
