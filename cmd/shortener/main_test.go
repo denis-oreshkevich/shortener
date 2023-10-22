@@ -8,6 +8,7 @@ import (
 	"github.com/denis-oreshkevich/shortener/internal/app/config"
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/denis-oreshkevich/shortener/internal/app/server"
+	"github.com/denis-oreshkevich/shortener/internal/app/shortener"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -22,18 +23,20 @@ import (
 func TestPost(t *testing.T) {
 	conf := config.Get()
 	tStorage := new(mockedStorage)
-	r := SetUpRouter(conf, tStorage)
+	short := shortener.New(tStorage)
+	r := SetUpRouter(conf, short)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
-	tSrv := newTestSrv(srv, tStorage)
+	tSrv := newTestConf(srv, tStorage)
 
 	postTests := []test{
 		{
 			name:   "simple Post test #1",
 			isMock: true,
 			mockOn: func(m *mockedStorage) *mock.Call {
-				return m.On("SaveURL", mock.Anything, mock.Anything).Return("CCCCCCCC", nil)
+				return m.On("SaveURL", mock.Anything, mock.Anything,
+					mock.Anything).Return("CCCCCCCC", nil)
 			},
 			reqFunc: func() *http.Request {
 				body := strings.NewReader("https://practicum.yandex.ru/")
@@ -81,11 +84,12 @@ func TestPost(t *testing.T) {
 func TestGet(t *testing.T) {
 	conf := config.Get()
 	tStorage := new(mockedStorage)
-	r := SetUpRouter(conf, tStorage)
+	short := shortener.New(tStorage)
+	r := SetUpRouter(conf, short)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
-	tSrv := newTestSrv(srv, tStorage)
+	tSrv := newTestConf(srv, tStorage)
 
 	getTests := []test{
 		{
@@ -141,11 +145,12 @@ func TestGet(t *testing.T) {
 func TestShortenPost(t *testing.T) {
 	conf := config.Get()
 	tStorage := new(mockedStorage)
-	r := SetUpRouter(conf, tStorage)
+	short := shortener.New(tStorage)
+	r := SetUpRouter(conf, short)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
-	tSrv := newTestSrv(srv, tStorage)
+	tSrv := newTestConf(srv, tStorage)
 
 	res, err := json.Marshal(server.NewResult(conf.BaseURL() + "/" + "EEEEEEEE"))
 	if err != nil {
@@ -156,7 +161,8 @@ func TestShortenPost(t *testing.T) {
 			name:   "simple ShortenPost test #1",
 			isMock: true,
 			mockOn: func(m *mockedStorage) *mock.Call {
-				return m.On("SaveURL", mock.Anything, mock.Anything).Return("EEEEEEEE", nil)
+				return m.On("SaveURL", mock.Anything, mock.Anything,
+					mock.Anything).Return("EEEEEEEE", nil)
 			},
 			reqFunc: func() *http.Request {
 				url := server.NewURL("https://practicum.yandex.ru/")
@@ -164,7 +170,8 @@ func TestShortenPost(t *testing.T) {
 				if err != nil {
 					logger.Log.Error("marshal json", zap.Error(err))
 				}
-				req := httptest.NewRequest("POST", srv.URL+"/api/shorten", bytes.NewReader(marshal))
+				req := httptest.NewRequest("POST", srv.URL+"/api/shorten",
+					bytes.NewReader(marshal))
 				req.RequestURI = ""
 				return req
 			},
@@ -183,7 +190,8 @@ func TestShortenPost(t *testing.T) {
 				if err != nil {
 					logger.Log.Error("marshal json", zap.Error(err))
 				}
-				req := httptest.NewRequest("POST", srv.URL+"/api/shorten", bytes.NewReader(marshal))
+				req := httptest.NewRequest("POST", srv.URL+"/api/shorten",
+					bytes.NewReader(marshal))
 				req.RequestURI = ""
 				return req
 			},
@@ -213,11 +221,12 @@ func TestShortenPost(t *testing.T) {
 func TestShortenBatch(t *testing.T) {
 	conf := config.Get()
 	tStorage := new(mockedStorage)
-	r := SetUpRouter(conf, tStorage)
+	short := shortener.New(tStorage)
+	r := SetUpRouter(conf, short)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
-	tSrv := newTestSrv(srv, tStorage)
+	tSrv := newTestConf(srv, tStorage)
 
 	bResp := make([]model.BatchRespEntry, 2)
 	b0 := model.NewBatchRespEntry("123", conf.BaseURL()+"/"+"EEEEEEEE")
@@ -234,7 +243,8 @@ func TestShortenBatch(t *testing.T) {
 			name:   "simple ShortenBatch test #1",
 			isMock: true,
 			mockOn: func(m *mockedStorage) *mock.Call {
-				return m.On("SaveURLBatch", mock.Anything, mock.Anything).Return(bResp, nil)
+				return m.On("SaveURLBatch", mock.Anything, mock.Anything,
+					mock.Anything).Return(bResp, nil)
 			},
 			reqFunc: func() *http.Request {
 				bReq := make([]model.BatchReqEntry, 2)
@@ -277,11 +287,12 @@ func TestShortenBatch(t *testing.T) {
 func TestNoRoutes(t *testing.T) {
 	conf := config.Get()
 	tStorage := new(mockedStorage)
-	r := SetUpRouter(conf, tStorage)
+	short := shortener.New(tStorage)
+	r := SetUpRouter(conf, short)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
-	tSrv := newTestSrv(srv, tStorage)
+	tSrv := newTestConf(srv, tStorage)
 
 	tests := []test{
 		{
@@ -332,8 +343,10 @@ func TestNoRoutes(t *testing.T) {
 func TestGzipCompression(t *testing.T) {
 	conf := config.Get()
 	tStorage := new(mockedStorage)
-	tStorage.On("SaveURL", mock.Anything, mock.Anything).Return("MMMMMMMM", nil)
-	r := SetUpRouter(conf, tStorage)
+	tStorage.On("SaveURL", mock.Anything, mock.Anything,
+		mock.Anything).Return("MMMMMMMM", nil)
+	short := shortener.New(tStorage)
+	r := SetUpRouter(conf, short)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -345,7 +358,7 @@ func TestGzipCompression(t *testing.T) {
 	successBody := `{
         "result":"` + conf.BaseURL() + "/MMMMMMMM" + `"
 	}`
-
+	client := createHTTPAuthClient(srv)
 	t.Run("sends_gzip_json", func(t *testing.T) {
 		buf := bytes.NewBuffer(nil)
 		zb := gzip.NewWriter(buf)
@@ -358,7 +371,7 @@ func TestGzipCompression(t *testing.T) {
 		r.RequestURI = ""
 		r.Header.Set("Content-Encoding", "gzip")
 
-		resp, err := http.DefaultClient.Do(r)
+		resp, err := client.Do(r)
 		require.NoError(t, err)
 
 		require.Equal(t, http.StatusCreated, resp.StatusCode)
@@ -377,7 +390,7 @@ func TestGzipCompression(t *testing.T) {
 		r.RequestURI = ""
 		r.Header.Set("Accept-Encoding", "gzip")
 
-		resp, err := http.DefaultClient.Do(r)
+		resp, err := client.Do(r)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusCreated, resp.StatusCode)
 		defer resp.Body.Close()
@@ -396,7 +409,7 @@ func TestGzipCompression(t *testing.T) {
 		r.RequestURI = ""
 		r.Header.Set("Accept-Encoding", "gzip")
 
-		resp, err := http.DefaultClient.Do(r)
+		resp, err := client.Do(r)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusCreated, resp.StatusCode)
 
