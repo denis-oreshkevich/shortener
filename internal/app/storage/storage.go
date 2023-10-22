@@ -1,20 +1,12 @@
 package storage
 
+import (
+	"context"
+	"github.com/denis-oreshkevich/shortener/internal/app/model"
+)
+
 type Storage interface {
-	SaveURL(url string) (string, error)
-	FindURL(id string) (string, error)
-}
-
-type Shortener struct {
-	ID          int64  `json:"uuid"`
-	ShortURL    string `json:"short_url"`
-	OriginalURL string `json:"original_url"`
-}
-
-func newShortener(id int64, shortURL, originalURL string) *Shortener {
-	return &Shortener{
-		ID:          id,
-		ShortURL:    shortURL,
-		OriginalURL: originalURL,
-	}
+	SaveURL(ctx context.Context, url string) (string, error)
+	SaveURLBatch(ctx context.Context, batch []model.BatchReqEntry) ([]model.BatchRespEntry, error)
+	FindURL(ctx context.Context, id string) (string, error)
 }
