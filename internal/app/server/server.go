@@ -20,12 +20,17 @@ func New(conf config.Conf, uh handler.URLHandler) Server {
 	r.POST(`/`, uh.Post())
 	r.GET(conf.BasePath()+`/:id`, uh.Get())
 	r.POST(`/api/shorten`, uh.ShortenPost())
+
 	r.NoRoute(uh.NoRoute())
 
 	return Server{
 		conf:   conf,
 		router: r,
 	}
+}
+
+func (s Server) AddPing(ph handler.PingHandler) {
+	s.router.GET(`/ping`, ph.Ping())
 }
 
 func (s Server) Start() error {

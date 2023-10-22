@@ -56,6 +56,7 @@ func Gzip(c *gin.Context) {
 		reader, err := gzip.NewReader(c.Request.Body)
 		if err != nil {
 			c.AbortWithError(500, err)
+			return
 		}
 		defer reader.Close()
 		c.Request.Body = reader

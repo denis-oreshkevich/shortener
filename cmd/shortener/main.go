@@ -24,18 +24,37 @@ func main() {
 		logger.Log.Fatal("parse config", zap.Error(err))
 	}
 
+	if err := run(); err != nil {
+		logger.Log.Fatal("main error", zap.Error(err))
+	}
+}
+
+func run() error {
 	conf := config.Get()
 
 	//uh := handler.New(conf, storage.NewMapStorage(make(map[string]string)))
 	fileStorage, err := storage.NewFileStorage(conf.FsPath())
 	if err != nil {
-		logger.Log.Fatal("initializing storage", zap.Error(err))
+		return fmt.Errorf("initializing file storage %w", err)
 	}
+	defer fileStorage.Close()
+
 	uh := handler.New(conf, fileStorage)
+
+	dbStorage, err := storage.NewDBStorage(conf.DatabaseDSN())
+	if err != nil {
+		return fmt.Errorf("initializing db storage %w", err)
+	}
+	defer dbStorage.Close()
+
+	ph := handler.NewPingHandler(dbStorage)
 	srv := server.New(conf, uh)
+
+	srv.AddPing(ph)
 
 	err = srv.Start()
 	if err != nil {
-		logger.Log.Fatal("start server", zap.Error(err))
+		return fmt.Errorf("start server %w", err)
 	}
+	return nil
 }

@@ -1,12 +1,13 @@
 package config
 
 type Conf struct {
-	scheme   string
-	host     string
-	port     string
-	baseURL  string
-	basePath string
-	fsPath   string
+	scheme      string
+	host        string
+	port        string
+	baseURL     string
+	basePath    string
+	fsPath      string
+	databaseDSN string
 }
 
 func (s Conf) Scheme() string {
@@ -31,4 +32,8 @@ func (s Conf) BasePath() string {
 
 func (s Conf) FsPath() string {
 	return s.fsPath
+}
+
+func (s Conf) DatabaseDSN() string {
+	return s.databaseDSN
 }
