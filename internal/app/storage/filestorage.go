@@ -31,7 +31,7 @@ func NewFileStorage(filename string) (*FileStorage, error) {
 		return nil, fmt.Errorf("NewFileStorage, OpenFile %w", err)
 	}
 	rw := bufio.NewReadWriter(bufio.NewReader(file), bufio.NewWriter(file))
-	items := make(map[string]string)
+	cache := NewMapStorage()
 	var shr = &FSModel{}
 	var line int64 = 0
 	for {
@@ -46,13 +46,11 @@ func NewFileStorage(filename string) (*FileStorage, error) {
 		if err != nil {
 			return nil, fmt.Errorf("NewFileStorage, Unmarshal line #%d %w", line, err)
 		}
-		items[shr.ShortURL] = shr.OriginalURL
+		cache.saveURLNotSync(shr.UserID, shr.ShortURL, shr.OriginalURL)
 		logger.Log.Debug(fmt.Sprintf("Initializied from file with id = %d, shortURL = %s, OriginalURL = %s", shr.ID, shr.ShortURL, shr.OriginalURL))
 		line++
 	}
 	logger.Log.Info(fmt.Sprintf("Initializing from file count = %d", line))
-	cache := NewMapStorage(items)
-
 	return &FileStorage{
 		inc:   line,
 		cache: cache,
@@ -61,10 +59,10 @@ func NewFileStorage(filename string) (*FileStorage, error) {
 	}, nil
 }
 
-func (fs *FileStorage) SaveURL(ctx context.Context, url string) (string, error) {
+func (fs *FileStorage) SaveURL(ctx context.Context, userID, url string) (string, error) {
 	id := atomic.AddInt64(&fs.inc, 1)
 	shURL := generator.RandString(8)
-	shorten := NewFSModel(id, shURL, url)
+	shorten := NewFSModel(id, shURL, url, userID)
 	marsh, err := json.Marshal(shorten)
 	if err != nil {
 		return "", fmt.Errorf("fileStorage SaveURL, marshal json %w", err)
@@ -82,19 +80,20 @@ func (fs *FileStorage) SaveURL(ctx context.Context, url string) (string, error) 
 		return "", fmt.Errorf("fileStorage SaveURL, flush file %w", err)
 	}
 
-	fs.cache.saveURLNotSync(shURL, url)
+	fs.cache.saveURLNotSync(userID, shURL, url)
 
 	return shURL, nil
 }
 
-func (fs *FileStorage) SaveURLBatch(ctx context.Context, batch []model.BatchReqEntry) ([]model.BatchRespEntry, error) {
+func (fs *FileStorage) SaveURLBatch(ctx context.Context, userID string,
+	batch []model.BatchReqEntry) ([]model.BatchRespEntry, error) {
 	var bResp []model.BatchRespEntry
 	fs.mx.Lock()
 	defer fs.mx.Unlock()
 	for _, b := range batch {
 		id := atomic.AddInt64(&fs.inc, 1)
 		shURL := generator.RandString(8)
-		shorten := NewFSModel(id, shURL, b.OriginalURL)
+		shorten := NewFSModel(id, shURL, b.OriginalURL, userID)
 		marsh, err := json.Marshal(shorten)
 		if err != nil {
 			return nil, fmt.Errorf("fileStorage SaveURLBatch, marshal json %w", err)
@@ -106,7 +105,7 @@ func (fs *FileStorage) SaveURLBatch(ctx context.Context, batch []model.BatchReqE
 		if err = fs.rw.WriteByte('\n'); err != nil {
 			return nil, fmt.Errorf("fileStorage SaveURLBatch. write byte %w", err)
 		}
-		fs.cache.saveURLNotSync(shURL, b.OriginalURL)
+		fs.cache.saveURLNotSync(userID, shURL, b.OriginalURL)
 		resp := model.NewBatchRespEntry(b.CorrelationID, shURL)
 		bResp = append(bResp, resp)
 	}
@@ -116,8 +115,16 @@ func (fs *FileStorage) SaveURLBatch(ctx context.Context, batch []model.BatchReqE
 	return bResp, nil
 }
 
-func (fs *FileStorage) FindURL(ctx context.Context, shortURL string) (string, error) {
-	return fs.cache.FindURL(ctx, shortURL)
+func (fs *FileStorage) FindURL(ctx context.Context, id string) (string, error) {
+	return fs.cache.FindURL(ctx, id)
+}
+
+func (fs *FileStorage) FindUserURLs(ctx context.Context, userID string) ([]model.URLPair, error) {
+	return fs.cache.FindUserURLs(ctx, userID)
+}
+
+func (fs *FileStorage) Ping(ctx context.Context) error {
+	return ErrPingNotDB
 }
 
 func (fs *FileStorage) Close() error {

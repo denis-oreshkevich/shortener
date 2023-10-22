@@ -1,5 +1,10 @@
 package model
 
+import (
+	"fmt"
+	"github.com/denis-oreshkevich/shortener/internal/app/config"
+)
+
 type BatchReqEntry struct {
 	CorrelationID string `json:"correlation_id"`
 	OriginalURL   string `json:"original_url"`
@@ -17,9 +22,10 @@ type BatchRespEntry struct {
 	ShortURL      string `json:"short_url"`
 }
 
-func NewBatchRespEntry(corID string, shortURL string) BatchRespEntry {
+func NewBatchRespEntry(corID string, id string) BatchRespEntry {
+	baseURL := config.Get().BaseURL()
 	return BatchRespEntry{
 		CorrelationID: corID,
-		ShortURL:      shortURL,
+		ShortURL:      fmt.Sprintf("%s/%s", baseURL, id),
 	}
 }

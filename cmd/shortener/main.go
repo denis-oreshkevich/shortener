@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/denis-oreshkevich/shortener/internal/app/config"
 	"github.com/denis-oreshkevich/shortener/internal/app/server"
+	"github.com/denis-oreshkevich/shortener/internal/app/shortener"
 	"github.com/denis-oreshkevich/shortener/internal/app/storage"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
 	"github.com/gin-gonic/gin"
@@ -34,7 +35,7 @@ func run() error {
 
 	var s storage.Storage
 	if conf.DatabaseDSN() != "" {
-		dbStorage, err := storage.NewDBStorage(conf.DatabaseDSN(), conf)
+		dbStorage, err := storage.NewDBStorage(conf.DatabaseDSN())
 		if err != nil {
 			return fmt.Errorf("initializing db storage %w", err)
 		}
@@ -54,12 +55,13 @@ func run() error {
 		s = fileStorage
 		logger.Log.Info("using fileStorage as storage")
 	} else {
-		mapStorage := storage.NewMapStorage(make(map[string]string))
+		mapStorage := storage.NewMapStorage()
 		s = mapStorage
 		logger.Log.Info("using mapStorage as storage")
 	}
+	sh := shortener.New(s)
 
-	r := SetUpRouter(conf, s)
+	r := SetUpRouter(conf, sh)
 
 	err := r.Run(fmt.Sprintf("%s:%s", conf.Host(), conf.Port()))
 	if err != nil {
@@ -68,12 +70,12 @@ func run() error {
 	return nil
 }
 
-func SetUpRouter(conf config.Conf, s storage.Storage) *gin.Engine {
-	uh := server.New(conf, s)
+func SetUpRouter(conf config.Conf, sh *shortener.Shortener) *gin.Engine {
+	uh := server.New(conf, sh)
 
 	r := gin.New()
 
-	r.Use(gin.Recovery(), server.Gzip, server.Logging)
+	r.Use(gin.Recovery(), server.JWTAuth, server.Gzip, server.Logging)
 
 	r.POST(`/`, uh.Post)
 	r.GET(conf.BasePath()+`/:id`, uh.Get)

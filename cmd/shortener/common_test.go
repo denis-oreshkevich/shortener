@@ -4,12 +4,18 @@ import (
 	"context"
 	"github.com/denis-oreshkevich/shortener/internal/app/config"
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
+	"github.com/denis-oreshkevich/shortener/internal/app/server"
+	"github.com/denis-oreshkevich/shortener/internal/app/util/auth"
+	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"regexp"
 	"testing"
 )
@@ -20,14 +26,24 @@ type mockedStorage struct {
 	mock.Mock
 }
 
-func (m *mockedStorage) SaveURL(ctx context.Context, url string) (string, error) {
-	args := m.Called(ctx, url)
+func (m *mockedStorage) SaveURL(ctx context.Context, userID, url string) (string, error) {
+	args := m.Called(ctx, userID, url)
 	return args.String(0), args.Error(1)
 }
 
-func (m *mockedStorage) SaveURLBatch(ctx context.Context, batch []model.BatchReqEntry) ([]model.BatchRespEntry, error) {
-	args := m.Called(ctx, batch)
+func (m *mockedStorage) SaveURLBatch(ctx context.Context, userID string, batch []model.BatchReqEntry) ([]model.BatchRespEntry, error) {
+	args := m.Called(ctx, userID, batch)
 	return args.Get(0).([]model.BatchRespEntry), args.Error(1)
+}
+
+func (m *mockedStorage) FindUserURLs(ctx context.Context, userID string) ([]model.URLPair, error) {
+	args := m.Called(ctx, userID)
+	return args.Get(0).([]model.URLPair), args.Error(1)
+}
+
+func (m *mockedStorage) Ping(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
 }
 
 func (m *mockedStorage) FindURL(ctx context.Context, id string) (string, error) {
@@ -35,13 +51,13 @@ func (m *mockedStorage) FindURL(ctx context.Context, id string) (string, error) 
 	return args.String(0), args.Error(1)
 }
 
-type testSrv struct {
+type testConf struct {
 	*httptest.Server
 	tStorage *mockedStorage
 }
 
-func newTestSrv(srv *httptest.Server, tStorage *mockedStorage) *testSrv {
-	return &testSrv{Server: srv, tStorage: tStorage}
+func newTestConf(srv *httptest.Server, tStorage *mockedStorage) *testConf {
+	return &testConf{Server: srv, tStorage: tStorage}
 }
 
 type want struct {
@@ -59,13 +75,9 @@ type test struct {
 	want    want
 }
 
-func RunSubTests(t *testing.T, tests []test, srv *testSrv) {
-	storage := srv.tStorage
-	client := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
+func RunSubTests(t *testing.T, tests []test, testConf *testConf) {
+	storage := testConf.tStorage
+	client := createHttpAuthClient(testConf.Server)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			request := tt.reqFunc()
@@ -88,6 +100,35 @@ func RunSubTests(t *testing.T, tests []test, srv *testSrv) {
 			Assert(t, tt, resp)
 		})
 	}
+}
+
+func createHttpAuthClient(srv *httptest.Server) *http.Client {
+	jar, _ := cookiejar.New(nil)
+	token, err := auth.GenerateToken()
+	if err != nil {
+		logger.Log.Error("generate token", zap.Error(err))
+	}
+	cookie := &http.Cookie{
+		Name:   server.CookieSessionName,
+		Value:  token,
+		Path:   "/",
+		Domain: config.Get().Host(),
+	}
+	c := make([]*http.Cookie, 1)
+	c[0] = cookie
+	urlStr := srv.URL
+	parse, err := url.Parse(urlStr)
+	if err != nil {
+		logger.Log.Error("parse srv.URL", zap.Error(err))
+	}
+	jar.SetCookies(parse, c)
+	client := &http.Client{
+		Jar: jar,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	return client
 }
 
 func Assert(t *testing.T, tt test, result *http.Response) {
