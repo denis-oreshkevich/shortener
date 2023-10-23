@@ -88,13 +88,13 @@ func (s Server) GetUsersURLs(c *gin.Context) {
 	ctx := c.Request.Context()
 	urls, err := s.sh.FindUserURLs(ctx)
 	if err != nil {
-		if errors.Is(shortener.ErrUserIDNotFound, err) {
+		if errors.Is(err, shortener.ErrUserIDNotFound) {
 			logger.Log.Debug("userID not present in ctx")
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 
 		}
-		if errors.Is(shortener.ErrUserItemsNotFound, err) {
+		if errors.Is(err, shortener.ErrUserItemsNotFound) {
 			logger.Log.Debug("findUserURLs items not found")
 			c.AbortWithStatus(http.StatusNoContent)
 			return
