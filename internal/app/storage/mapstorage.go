@@ -72,7 +72,6 @@ func (ms *MapStorage) FindUserURLs(ctx context.Context, userID string) ([]model.
 		id := uItems[i]
 		val := ms.items[id]
 		p := model.NewURLPair(id, val)
-		fmt.Println("!", p)
 		res = append(res, p)
 	}
 	return res, nil
