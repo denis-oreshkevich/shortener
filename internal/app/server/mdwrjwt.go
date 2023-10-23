@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	UserCookieName = `jwt-cookie`
+	UserCookieName = `JWT-Cookie`
 )
 
 func JWTAuth(c *gin.Context) {
