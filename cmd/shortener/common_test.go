@@ -110,7 +110,7 @@ func createHTTPAuthClient(srv *httptest.Server) *http.Client {
 		logger.Log.Error("generate token", zap.Error(err))
 	}
 	cookie := &http.Cookie{
-		Name:   server.CookieSessionName,
+		Name:   server.UserCookieName,
 		Value:  token,
 		Path:   "/",
 		Domain: config.Get().Host(),
