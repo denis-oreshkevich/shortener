@@ -63,17 +63,18 @@ func (ms *MapStorage) FindUserURLs(ctx context.Context, userID string) ([]model.
 	uItems, ok := ms.userURLs[userID]
 	logger.Log.Debug(fmt.Sprintf("uItems for userID = %s, isExist = %t", userID, ok))
 	if !ok {
-		return nil, fmt.Errorf("uItems not found by userID = %s", userID)
+		logger.Log.Warn(fmt.Sprintf("uItems for userID = %s, not found", userID))
+		return nil, nil
 	}
 	length := len(uItems)
-	var res = make([]model.URLPair, length)
+	var res = make([]model.URLPair, 0, length)
 	for i := 0; i < length; i++ {
 		id := uItems[i]
 		val := ms.items[id]
 		p := model.NewURLPair(id, val)
+		fmt.Println("!", p)
 		res = append(res, p)
 	}
-
 	return res, nil
 }
 

@@ -8,6 +8,7 @@ import (
 )
 
 var ErrUserIDNotFound = errors.New("userID is not type of string")
+var ErrUserItemsNotFound = errors.New("user items not found")
 
 // TODO think about transactions on this level
 type Shortener struct {
@@ -45,7 +46,14 @@ func (sh *Shortener) FindUserURLs(ctx context.Context) ([]model.URLPair, error) 
 	if err != nil {
 		return nil, err
 	}
-	return sh.storage.FindUserURLs(ctx, userID)
+	pairs, err := sh.storage.FindUserURLs(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if pairs == nil || len(pairs) == 0 {
+		return pairs, ErrUserItemsNotFound
+	}
+	return pairs, nil
 }
 
 func (sh *Shortener) Ping(ctx context.Context) error {

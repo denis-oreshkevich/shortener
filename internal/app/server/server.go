@@ -94,12 +94,13 @@ func (s Server) GetUsersURLs(c *gin.Context) {
 			return
 
 		}
+		if errors.Is(shortener.ErrUserItemsNotFound, err) {
+			logger.Log.Debug("findUserURLs items not found")
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
 		logger.Log.Error("findUserURLs", zap.Error(err))
 		c.AbortWithError(http.StatusInternalServerError, err)
-		return
-	}
-	if len(urls) == 0 {
-		c.AbortWithStatus(http.StatusNoContent)
 		return
 	}
 	resp, err := json.Marshal(urls)
@@ -149,11 +150,6 @@ func (s Server) Ping(c *gin.Context) {
 	ctx := c.Request.Context()
 	err := s.sh.Ping(ctx)
 	if err != nil {
-		if errors.Is(storage.ErrPingNotDB, err) {
-			logger.Log.Error("shortener ping", zap.Error(err))
-			c.AbortWithStatus(http.StatusInternalServerError)
-			return
-		}
 		logger.Log.Error("shortener ping", zap.Error(err))
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
