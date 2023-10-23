@@ -26,18 +26,18 @@ type mockedStorage struct {
 	mock.Mock
 }
 
-func (m *mockedStorage) SaveURL(ctx context.Context, userID model.UserID, url string) (string, error) {
+func (m *mockedStorage) SaveURL(ctx context.Context, userID string, url string) (string, error) {
 	args := m.Called(ctx, userID, url)
 	return args.String(0), args.Error(1)
 }
 
-func (m *mockedStorage) SaveURLBatch(ctx context.Context, userID model.UserID,
+func (m *mockedStorage) SaveURLBatch(ctx context.Context, userID string,
 	batch []model.BatchReqEntry) ([]model.BatchRespEntry, error) {
 	args := m.Called(ctx, userID, batch)
 	return args.Get(0).([]model.BatchRespEntry), args.Error(1)
 }
 
-func (m *mockedStorage) FindUserURLs(ctx context.Context, userID model.UserID) ([]model.URLPair, error) {
+func (m *mockedStorage) FindUserURLs(ctx context.Context, userID string) ([]model.URLPair, error) {
 	args := m.Called(ctx, userID)
 	return args.Get(0).([]model.URLPair), args.Error(1)
 }

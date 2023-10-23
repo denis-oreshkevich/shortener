@@ -46,7 +46,7 @@ func NewFileStorage(filename string) (*FileStorage, error) {
 		if err != nil {
 			return nil, fmt.Errorf("NewFileStorage, Unmarshal line #%d %w", line, err)
 		}
-		cache.saveURLNotSync(model.UserID(shr.UserID), shr.ShortURL, shr.OriginalURL)
+		cache.saveURLNotSync(shr.UserID, shr.ShortURL, shr.OriginalURL)
 		logger.Log.Debug(fmt.Sprintf("Initializied from file with id = %d, shortURL = %s, OriginalURL = %s", shr.ID, shr.ShortURL, shr.OriginalURL))
 		line++
 	}
@@ -59,7 +59,7 @@ func NewFileStorage(filename string) (*FileStorage, error) {
 	}, nil
 }
 
-func (fs *FileStorage) SaveURL(ctx context.Context, userID model.UserID, url string) (string, error) {
+func (fs *FileStorage) SaveURL(ctx context.Context, userID string, url string) (string, error) {
 	id := atomic.AddInt64(&fs.inc, 1)
 	shURL := generator.RandString(8)
 	shorten := NewFSModel(id, shURL, url, userID)
@@ -85,7 +85,7 @@ func (fs *FileStorage) SaveURL(ctx context.Context, userID model.UserID, url str
 	return shURL, nil
 }
 
-func (fs *FileStorage) SaveURLBatch(ctx context.Context, userID model.UserID,
+func (fs *FileStorage) SaveURLBatch(ctx context.Context, userID string,
 	batch []model.BatchReqEntry) ([]model.BatchRespEntry, error) {
 	var bResp []model.BatchRespEntry
 	fs.mx.Lock()
@@ -119,7 +119,7 @@ func (fs *FileStorage) FindURL(ctx context.Context, id string) (string, error) {
 	return fs.cache.FindURL(ctx, id)
 }
 
-func (fs *FileStorage) FindUserURLs(ctx context.Context, userID model.UserID) ([]model.URLPair, error) {
+func (fs *FileStorage) FindUserURLs(ctx context.Context, userID string) ([]model.URLPair, error) {
 	return fs.cache.FindUserURLs(ctx, userID)
 }
 

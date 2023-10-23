@@ -50,7 +50,7 @@ func JWTAuth(c *gin.Context) {
 	log.Debug(fmt.Sprintf("user id from token = %s", claims.Subject))
 
 	ctx := c.Request.Context()
-	newCtx := context.WithValue(ctx, "userID", model.NewUserID(claims.Subject))
+	newCtx := context.WithValue(ctx, model.UserIDKey{}, claims.Subject)
 	req := c.Request.WithContext(newCtx)
 	c.Request = req
 
