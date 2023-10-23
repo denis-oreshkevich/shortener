@@ -10,7 +10,7 @@ import (
 
 const (
 	SecretKey = "MegaSecretKey"
-	TokenExp  = time.Minute * 60
+	TokenExp  = time.Hour * 5
 )
 
 func GenerateToken() (string, error) {

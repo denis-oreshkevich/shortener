@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/denis-oreshkevich/shortener/internal/app/config"
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/auth"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
@@ -64,7 +63,7 @@ func login(c *gin.Context) (string, error) {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return "", fmt.Errorf("generate token. %w", err)
 	}
-	c.SetCookie(CookieSessionName, tokenString, int(auth.TokenExp.Seconds()), "/",
-		config.Get().Host(), true, true)
+	c.SetCookie(CookieSessionName, tokenString, -1, "",
+		"", true, true)
 	return tokenString, nil
 }
