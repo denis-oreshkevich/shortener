@@ -52,9 +52,9 @@ func (sh *Shortener) Ping(ctx context.Context) error {
 	return sh.storage.Ping(ctx)
 }
 
-func (sh *Shortener) getUserID(ctx context.Context) (string, error) {
+func (sh *Shortener) getUserID(ctx context.Context) (model.UserID, error) {
 	value := ctx.Value("userID")
-	userID, ok := value.(string)
+	userID, ok := value.(model.UserID)
 	if !ok {
 		return "", ErrUserIDNotString
 	}

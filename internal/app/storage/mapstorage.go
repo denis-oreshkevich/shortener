@@ -12,7 +12,7 @@ import (
 type MapStorage struct {
 	mx sync.RWMutex
 	//map userId = slice of URL IDs
-	userURLs map[string][]string
+	userURLs map[model.UserID][]string
 	items    map[string]string
 }
 
@@ -20,12 +20,12 @@ var _ Storage = (*MapStorage)(nil)
 
 func NewMapStorage() *MapStorage {
 	return &MapStorage{
-		userURLs: make(map[string][]string),
+		userURLs: make(map[model.UserID][]string),
 		items:    make(map[string]string),
 	}
 }
 
-func (ms *MapStorage) SaveURL(ctx context.Context, userID, url string) (string, error) {
+func (ms *MapStorage) SaveURL(ctx context.Context, userID model.UserID, url string) (string, error) {
 	id := generator.RandString(8)
 	ms.mx.Lock()
 	defer ms.mx.Unlock()
@@ -33,7 +33,7 @@ func (ms *MapStorage) SaveURL(ctx context.Context, userID, url string) (string, 
 	return id, nil
 }
 
-func (ms *MapStorage) SaveURLBatch(ctx context.Context, userID string,
+func (ms *MapStorage) SaveURLBatch(ctx context.Context, userID model.UserID,
 	batch []model.BatchReqEntry) ([]model.BatchRespEntry, error) {
 	ms.mx.Lock()
 	defer ms.mx.Unlock()
@@ -57,7 +57,7 @@ func (ms *MapStorage) FindURL(ctx context.Context, id string) (string, error) {
 	return val, nil
 }
 
-func (ms *MapStorage) FindUserURLs(ctx context.Context, userID string) ([]model.URLPair, error) {
+func (ms *MapStorage) FindUserURLs(ctx context.Context, userID model.UserID) ([]model.URLPair, error) {
 	ms.mx.RLock()
 	defer ms.mx.RUnlock()
 	uItems, ok := ms.userURLs[userID]
@@ -77,7 +77,7 @@ func (ms *MapStorage) FindUserURLs(ctx context.Context, userID string) ([]model.
 	return res, nil
 }
 
-func (ms *MapStorage) saveURLNotSync(userID, id, url string) {
+func (ms *MapStorage) saveURLNotSync(userID model.UserID, id, url string) {
 	uItems, ok := ms.userURLs[userID]
 	if !ok {
 		logger.Log.Debug(fmt.Sprintf("Creating new items map for userID = %s", userID))

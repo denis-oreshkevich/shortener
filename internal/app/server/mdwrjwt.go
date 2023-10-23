@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/denis-oreshkevich/shortener/internal/app/config"
+	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/auth"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
 	"github.com/gin-gonic/gin"
@@ -20,14 +21,17 @@ const (
 var log = logger.Log.With(zap.String("cat", "auth"))
 
 func JWTAuth(c *gin.Context) {
-	cookie, err := c.Cookie(CookieSessionName)
+	tokenString, err := c.Cookie(CookieSessionName)
 	if err != nil {
 		log.Debug("session cookie not found in request")
-		login(c)
-		return
+		tokenString, err = login(c)
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
 	}
 	claims := &jwt.RegisteredClaims{}
-	token, err := jwt.ParseWithClaims(cookie, claims, func(t *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
@@ -46,7 +50,7 @@ func JWTAuth(c *gin.Context) {
 	log.Debug(fmt.Sprintf("user id from token = %s", claims.Subject))
 
 	ctx := c.Request.Context()
-	newCtx := context.WithValue(ctx, "userID", claims.Subject)
+	newCtx := context.WithValue(ctx, "userID", model.NewUserID(claims.Subject))
 	req := c.Request.WithContext(newCtx)
 	c.Request = req
 
@@ -54,15 +58,15 @@ func JWTAuth(c *gin.Context) {
 	c.Next()
 }
 
-func login(c *gin.Context) {
+func login(c *gin.Context) (string, error) {
 	tokenString, err := auth.GenerateToken()
 	if err != nil {
 		log.Error("build token", zap.Error(err))
 		c.AbortWithError(http.StatusInternalServerError, err)
-		return
+		return "", fmt.Errorf("generate token. %w", err)
 	}
 
 	c.SetCookie(CookieSessionName, tokenString, int(auth.TokenExp/time.Second), "/",
 		config.Get().Host(), true, true)
-	c.AbortWithStatus(http.StatusUnauthorized)
+	return tokenString, nil
 }

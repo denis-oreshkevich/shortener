@@ -26,17 +26,18 @@ type mockedStorage struct {
 	mock.Mock
 }
 
-func (m *mockedStorage) SaveURL(ctx context.Context, userID, url string) (string, error) {
+func (m *mockedStorage) SaveURL(ctx context.Context, userID model.UserID, url string) (string, error) {
 	args := m.Called(ctx, userID, url)
 	return args.String(0), args.Error(1)
 }
 
-func (m *mockedStorage) SaveURLBatch(ctx context.Context, userID string, batch []model.BatchReqEntry) ([]model.BatchRespEntry, error) {
+func (m *mockedStorage) SaveURLBatch(ctx context.Context, userID model.UserID,
+	batch []model.BatchReqEntry) ([]model.BatchRespEntry, error) {
 	args := m.Called(ctx, userID, batch)
 	return args.Get(0).([]model.BatchRespEntry), args.Error(1)
 }
 
-func (m *mockedStorage) FindUserURLs(ctx context.Context, userID string) ([]model.URLPair, error) {
+func (m *mockedStorage) FindUserURLs(ctx context.Context, userID model.UserID) ([]model.URLPair, error) {
 	args := m.Called(ctx, userID)
 	return args.Get(0).([]model.URLPair), args.Error(1)
 }
@@ -77,7 +78,7 @@ type test struct {
 
 func RunSubTests(t *testing.T, tests []test, testConf *testConf) {
 	storage := testConf.tStorage
-	client := createHttpAuthClient(testConf.Server)
+	client := createHTTPAuthClient(testConf.Server)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			request := tt.reqFunc()
@@ -102,7 +103,7 @@ func RunSubTests(t *testing.T, tests []test, testConf *testConf) {
 	}
 }
 
-func createHttpAuthClient(srv *httptest.Server) *http.Client {
+func createHTTPAuthClient(srv *httptest.Server) *http.Client {
 	jar, _ := cookiejar.New(nil)
 	token, err := auth.GenerateToken()
 	if err != nil {

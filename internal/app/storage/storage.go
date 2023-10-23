@@ -9,12 +9,12 @@ import (
 var ErrPingNotDB = errors.New("ping not a db storage")
 
 type Storage interface {
-	SaveURL(ctx context.Context, userID, url string) (string, error)
-	SaveURLBatch(ctx context.Context, userID string,
+	SaveURL(ctx context.Context, userID model.UserID, url string) (string, error)
+	SaveURLBatch(ctx context.Context, userID model.UserID,
 		batch []model.BatchReqEntry) ([]model.BatchRespEntry, error)
 	FindURL(ctx context.Context, id string) (string, error)
 
-	FindUserURLs(ctx context.Context, userID string) ([]model.URLPair, error)
+	FindUserURLs(ctx context.Context, userID model.UserID) ([]model.URLPair, error)
 
 	Ping(ctx context.Context) error
 }

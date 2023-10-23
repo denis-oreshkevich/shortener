@@ -28,7 +28,7 @@ func NewDBStorage(dbDSN string) (*DBStorage, error) {
 	}, nil
 }
 
-func (ds *DBStorage) SaveURL(ctx context.Context, userID, url string) (string, error) {
+func (ds *DBStorage) SaveURL(ctx context.Context, userID model.UserID, url string) (string, error) {
 	stmt, err := ds.db.PrepareContext(ctx, "WITH new_row AS ("+
 		"INSERT INTO courses.shortener(short_url, original_url, user_id) VALUES ($1, $2, $3) "+
 		"ON CONFLICT (original_url) DO NOTHING RETURNING short_url) "+
@@ -52,7 +52,8 @@ func (ds *DBStorage) SaveURL(ctx context.Context, userID, url string) (string, e
 	return res, err
 }
 
-func (ds *DBStorage) SaveURLBatch(ctx context.Context, userID string, batch []model.BatchReqEntry) ([]model.BatchRespEntry, error) {
+func (ds *DBStorage) SaveURLBatch(ctx context.Context, userID model.UserID,
+	batch []model.BatchReqEntry) ([]model.BatchRespEntry, error) {
 	tx, err := ds.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("begin tx. %w", err)
@@ -102,7 +103,7 @@ func (ds *DBStorage) FindURL(ctx context.Context, shortURL string) (string, erro
 	return orig, nil
 }
 
-func (ds *DBStorage) FindUserURLs(ctx context.Context, userID string) ([]model.URLPair, error) {
+func (ds *DBStorage) FindUserURLs(ctx context.Context, userID model.UserID) ([]model.URLPair, error) {
 	stmt, err := ds.db.PrepareContext(ctx, "SELECT short_url, original_url "+
 		"FROM courses.shortener sh WHERE sh.user_id = $1")
 	if err != nil {
@@ -111,10 +112,10 @@ func (ds *DBStorage) FindUserURLs(ctx context.Context, userID string) ([]model.U
 	defer stmt.Close()
 
 	rows, err := stmt.QueryContext(ctx, userID)
-	defer rows.Close()
 	if err != nil {
 		return nil, fmt.Errorf("query context. %w", err)
 	}
+	defer rows.Close()
 	var res = make([]model.URLPair, 0)
 	for rows.Next() {
 		p := model.URLPair{}

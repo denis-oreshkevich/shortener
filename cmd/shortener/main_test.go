@@ -358,7 +358,7 @@ func TestGzipCompression(t *testing.T) {
 	successBody := `{
         "result":"` + conf.BaseURL() + "/MMMMMMMM" + `"
 	}`
-	client := createHttpAuthClient(srv)
+	client := createHTTPAuthClient(srv)
 	t.Run("sends_gzip_json", func(t *testing.T) {
 		buf := bytes.NewBuffer(nil)
 		zb := gzip.NewWriter(buf)
