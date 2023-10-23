@@ -7,7 +7,7 @@ import (
 	"github.com/denis-oreshkevich/shortener/internal/app/storage"
 )
 
-var ErrUserIDNotString = errors.New("userID is not type of string")
+var ErrUserIDNotFound = errors.New("userID is not type of string")
 
 // TODO think about transactions on this level
 type Shortener struct {
@@ -54,9 +54,12 @@ func (sh *Shortener) Ping(ctx context.Context) error {
 
 func (sh *Shortener) getUserID(ctx context.Context) (string, error) {
 	value := ctx.Value(model.UserIDKey{})
+	if value == nil {
+		return "", ErrUserIDNotFound
+	}
 	userID, ok := value.(string)
 	if !ok {
-		return "", ErrUserIDNotString
+		return "", errors.New("userID is not string")
 	}
 	return userID, nil
 }
