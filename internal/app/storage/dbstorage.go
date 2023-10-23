@@ -110,7 +110,6 @@ func (ds *DBStorage) FindUserURLs(ctx context.Context, userID string) ([]model.U
 		return nil, fmt.Errorf("prepare context. %w", err)
 	}
 	defer stmt.Close()
-
 	rows, err := stmt.QueryContext(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("query context. %w", err)
@@ -118,10 +117,12 @@ func (ds *DBStorage) FindUserURLs(ctx context.Context, userID string) ([]model.U
 	defer rows.Close()
 	var res = make([]model.URLPair, 0)
 	for rows.Next() {
-		p := model.URLPair{}
-		if err := rows.Scan(&p.ShortURL, &p.OriginalURL); err != nil {
+		var sh string
+		var orig string
+		if err := rows.Scan(&sh, &orig); err != nil {
 			return nil, fmt.Errorf("cannot scan value. %w", err)
 		}
+		p := model.NewURLPair(sh, orig)
 		res = append(res, p)
 	}
 	err = rows.Err()

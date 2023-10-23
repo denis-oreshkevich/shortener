@@ -11,7 +11,6 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"go.uber.org/zap"
 	"net/http"
-	"time"
 )
 
 const (
@@ -65,8 +64,6 @@ func login(c *gin.Context) (string, error) {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return "", fmt.Errorf("generate token. %w", err)
 	}
-	duration := auth.TokenExp / time.Second
-	fmt.Println("!!!!!!!", duration)
 	c.SetCookie(CookieSessionName, tokenString, int(auth.TokenExp.Seconds()), "/",
 		config.Get().Host(), true, true)
 	return tokenString, nil
