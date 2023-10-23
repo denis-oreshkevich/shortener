@@ -13,13 +13,13 @@ import (
 )
 
 const (
-	CookieSessionName = `SESSION`
+	CookieName = `jwt-cookie`
 )
 
 func JWTAuth(c *gin.Context) {
 	log := logger.Log.With(zap.String("cat", "auth"))
 	ctx := c.Request.Context()
-	tokenString, err := c.Cookie(CookieSessionName)
+	tokenString, err := c.Cookie(CookieName)
 	if err != nil {
 		log.Debug("session cookie not found in request")
 		tokenString, err = login(c)
@@ -54,8 +54,6 @@ func JWTAuth(c *gin.Context) {
 	c.Request = req
 
 	log.Debug(fmt.Sprintf("request with user sub = %s", claims.Subject))
-	c.SetCookie(CookieSessionName, tokenString, int(auth.TokenExp.Seconds()), "",
-		"", false, true)
 	c.Next()
 }
 
@@ -64,5 +62,7 @@ func login(c *gin.Context) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("generate token. %w", err)
 	}
+	c.SetCookie(CookieName, tokenString, int(auth.TokenExp.Seconds()), "",
+		"", false, true)
 	return tokenString, nil
 }
