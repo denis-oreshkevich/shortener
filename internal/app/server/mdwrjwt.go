@@ -56,7 +56,7 @@ func JWTAuth(c *gin.Context) {
 	log.Debug(fmt.Sprintf("request with user sub = %s", claims.Subject))
 	c.Next()
 	c.SetCookie(CookieSessionName, tokenString, int(auth.TokenExp.Seconds()), "",
-		"", true, true)
+		"", false, true)
 }
 
 func login(c *gin.Context) (string, error) {
@@ -66,5 +66,7 @@ func login(c *gin.Context) (string, error) {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return "", fmt.Errorf("generate token. %w", err)
 	}
+	c.SetCookie(CookieSessionName, tokenString, int(auth.TokenExp.Seconds()), "",
+		"", true, true)
 	return tokenString, nil
 }
