@@ -50,7 +50,7 @@ func (sh *Shortener) FindUserURLs(ctx context.Context) ([]model.URLPair, error) 
 	if err != nil {
 		return nil, err
 	}
-	if pairs == nil || len(pairs) == 0 {
+	if len(pairs) == 0 {
 		return pairs, ErrUserItemsNotFound
 	}
 	return pairs, nil

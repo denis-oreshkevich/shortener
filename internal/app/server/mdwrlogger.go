@@ -15,7 +15,7 @@ func Logging(c *gin.Context) {
 
 	duration := time.Since(start)
 
-	logger.Log.Info("New request", zap.String("uri", r.RequestURI),
+	logger.Log.Info("request", zap.String("uri", r.RequestURI),
 		zap.String("method", r.Method),
 		zap.Int("status", c.Writer.Status()),
 		zap.Duration("duration", duration),

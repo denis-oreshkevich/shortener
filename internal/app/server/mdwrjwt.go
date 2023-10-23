@@ -65,8 +65,9 @@ func login(c *gin.Context) (string, error) {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return "", fmt.Errorf("generate token. %w", err)
 	}
-
-	c.SetCookie(CookieSessionName, tokenString, int(auth.TokenExp/time.Second), "/",
+	duration := auth.TokenExp / time.Second
+	fmt.Println("!!!!!!!", duration)
+	c.SetCookie(CookieSessionName, tokenString, int(auth.TokenExp.Seconds()), "/",
 		config.Get().Host(), true, true)
 	return tokenString, nil
 }
