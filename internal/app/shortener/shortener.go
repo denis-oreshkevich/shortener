@@ -7,7 +7,7 @@ import (
 	"github.com/denis-oreshkevich/shortener/internal/app/storage"
 )
 
-var ErrUserIDNotFound = errors.New("userID is not type of string")
+var ErrUserIsNew = errors.New("user is new")
 var ErrUserItemsNotFound = errors.New("user items not found")
 
 // TODO think about transactions on this level
@@ -42,10 +42,22 @@ func (sh *Shortener) FindURL(ctx context.Context, id string) (string, error) {
 }
 
 func (sh *Shortener) FindUserURLs(ctx context.Context) ([]model.URLPair, error) {
+	value := ctx.Value(model.IsUserNew{})
+	if value != nil {
+		b, ok := value.(bool)
+		if !ok {
+			return nil, errors.New("IsUserNew is not bool")
+		}
+		if b {
+			return nil, ErrUserIsNew
+		}
+	}
+
 	userID, err := sh.getUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
+
 	pairs, err := sh.storage.FindUserURLs(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -63,7 +75,7 @@ func (sh *Shortener) Ping(ctx context.Context) error {
 func (sh *Shortener) getUserID(ctx context.Context) (string, error) {
 	value := ctx.Value(model.UserIDKey{})
 	if value == nil {
-		return "", ErrUserIDNotFound
+		return "", errors.New("userID is not present")
 	}
 	userID, ok := value.(string)
 	if !ok {

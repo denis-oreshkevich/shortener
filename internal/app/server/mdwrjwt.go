@@ -13,13 +13,14 @@ import (
 )
 
 const (
-	CookieSessionName = `SESSIONID`
+	CookieSessionName = `SESSION`
 )
 
 var log = logger.Log.With(zap.String("cat", "auth"))
 
 func JWTAuth(c *gin.Context) {
 	tokenString, err := c.Cookie(CookieSessionName)
+	ctx := c.Request.Context()
 	if err != nil {
 		log.Debug("session cookie not found in request")
 		tokenString, err = login(c)
@@ -27,6 +28,7 @@ func JWTAuth(c *gin.Context) {
 			c.AbortWithError(http.StatusInternalServerError, err)
 			return
 		}
+		ctx = context.WithValue(ctx, model.IsUserNew{}, true)
 	}
 	claims := &jwt.RegisteredClaims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
@@ -47,7 +49,6 @@ func JWTAuth(c *gin.Context) {
 	}
 	log.Debug(fmt.Sprintf("user id from token = %s", claims.Subject))
 
-	ctx := c.Request.Context()
 	newCtx := context.WithValue(ctx, model.UserIDKey{}, claims.Subject)
 	req := c.Request.WithContext(newCtx)
 	c.Request = req

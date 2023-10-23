@@ -88,8 +88,8 @@ func (s Server) GetUsersURLs(c *gin.Context) {
 	ctx := c.Request.Context()
 	urls, err := s.sh.FindUserURLs(ctx)
 	if err != nil {
-		if errors.Is(err, shortener.ErrUserIDNotFound) {
-			logger.Log.Debug("userID not present in ctx")
+		if errors.Is(err, shortener.ErrUserIsNew) {
+			logger.Log.Debug("user is new")
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 
