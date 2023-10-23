@@ -16,9 +16,8 @@ const (
 	CookieSessionName = `SESSION`
 )
 
-var log = logger.Log.With(zap.String("cat", "auth"))
-
 func JWTAuth(c *gin.Context) {
+	log := logger.Log.With(zap.String("cat", "auth"))
 	tokenString, err := c.Cookie(CookieSessionName)
 	ctx := c.Request.Context()
 	if err != nil {
