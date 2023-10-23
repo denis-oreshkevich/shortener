@@ -18,11 +18,11 @@ const (
 
 func JWTAuth(c *gin.Context) {
 	log := logger.Log.With(zap.String("cat", "auth"))
-	tokenString, err := c.Cookie(CookieSessionName)
 	ctx := c.Request.Context()
+	tokenString, err := c.Cookie(CookieSessionName)
 	if err != nil {
 		log.Debug("session cookie not found in request")
-		tokenString, err = login(c)
+		tokenString, err = login(c, log)
 		if err != nil {
 			c.AbortWithError(http.StatusInternalServerError, err)
 			return
@@ -58,7 +58,7 @@ func JWTAuth(c *gin.Context) {
 		"", false, true)
 }
 
-func login(c *gin.Context) (string, error) {
+func login(c *gin.Context, log *zap.Logger) (string, error) {
 	tokenString, err := auth.GenerateToken()
 	if err != nil {
 		log.Error("build token", zap.Error(err))
