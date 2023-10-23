@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	CookieSessionName = `SESSION`
+	CookieSessionName = `SESSIONID`
 )
 
 var log = logger.Log.With(zap.String("cat", "auth"))
@@ -63,7 +63,7 @@ func login(c *gin.Context) (string, error) {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return "", fmt.Errorf("generate token. %w", err)
 	}
-	c.SetCookie(CookieSessionName, tokenString, -1, "",
+	c.SetCookie(CookieSessionName, tokenString, int(auth.TokenExp.Seconds()), "",
 		"", true, true)
 	return tokenString, nil
 }
