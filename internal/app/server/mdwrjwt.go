@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/auth"
@@ -22,21 +21,14 @@ func JWTAuth(c *gin.Context) {
 	ctx := c.Request.Context()
 	tokenString, err := c.Cookie(CookieSessionName)
 	if err != nil {
-		if errors.Is(err, http.ErrNoCookie) {
-			log.Debug("session cookie not found in request")
-			tokenString, err = login(c)
-			if err != nil {
-				log.Error("login", zap.Error(err))
-				c.AbortWithError(http.StatusInternalServerError, err)
-				return
-			}
-			ctx = context.WithValue(ctx, model.IsUserNew{}, true)
-		} else {
-			log.Error("cookie", zap.Error(err))
+		log.Debug("session cookie not found in request")
+		tokenString, err = login(c)
+		if err != nil {
+			log.Error("login", zap.Error(err))
 			c.AbortWithError(http.StatusInternalServerError, err)
 			return
 		}
-
+		ctx = context.WithValue(ctx, model.IsUserNew{}, true)
 	}
 	claims := &jwt.RegisteredClaims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
@@ -72,7 +64,5 @@ func login(c *gin.Context) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("generate token. %w", err)
 	}
-	c.SetCookie(CookieSessionName, tokenString, int(auth.TokenExp.Seconds()), "",
-		"", true, true)
 	return tokenString, nil
 }
