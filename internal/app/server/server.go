@@ -23,15 +23,21 @@ const (
 )
 
 type Server struct {
-	conf config.Conf
-	sh   *shortener.Shortener
+	conf       config.Conf
+	sh         *shortener.Shortener
+	delChannel chan model.BatchDeleteEntry
 }
 
 func New(conf config.Conf, sh *shortener.Shortener) *Server {
-	return &Server{
-		conf: conf,
-		sh:   sh,
+	inst := &Server{
+		conf:       conf,
+		sh:         sh,
+		delChannel: make(chan model.BatchDeleteEntry, 3),
 	}
+	go func() {
+		sh.DeleteUserURLs(inst.delChannel)
+	}()
+	return inst
 }
 
 func (s Server) Post(c *gin.Context) {
@@ -76,6 +82,11 @@ func (s Server) Get(c *gin.Context) {
 	ctx := c.Request.Context()
 	url, err := s.sh.FindURL(ctx, id)
 	if err != nil {
+		if errors.Is(err, storage.ErrResultIsDeleted) {
+			log.Debug("record is already deleted", zap.Error(err))
+			c.AbortWithStatus(http.StatusGone)
+			return
+		}
 		log.Error("findURL", zap.Error(err))
 		c.String(http.StatusBadRequest, "Не найдено сохраненного URL")
 		return
@@ -194,6 +205,46 @@ func (s Server) ShortenBatch(c *gin.Context) {
 	}
 	c.Header(ContentType, ApplicationJSON)
 	c.String(http.StatusCreated, string(resp))
+}
+
+func (s Server) DeleteURLs(c *gin.Context) {
+	req := c.Request
+	ctx := c.Request.Context()
+	userID, userErr := s.sh.GetUserID(ctx)
+	body, bodyErr := io.ReadAll(req.Body)
+	in := make(chan model.BatchDeleteEntry)
+	f := func() {
+		defer close(in)
+		if userErr != nil {
+			logger.Log.Error("get userID", zap.Error(userErr))
+			return
+		}
+
+		if bodyErr != nil {
+			logger.Log.Error("readAll", zap.Error(bodyErr))
+			return
+		}
+		var batch []string
+		if err := json.Unmarshal(body, &batch); err != nil {
+			logger.Log.Error("unmarshal", zap.Error(err))
+			return
+		}
+		if len(batch) == 0 {
+			logger.Log.Warn("batch len = 0")
+			return
+		}
+		entry := model.NewBatchDeleteEntry(userID, batch)
+		logger.Log.Debug("send to channel in")
+		in <- entry
+	}
+	go f()
+	go func() {
+		entry := <-in
+		logger.Log.Debug("send to delChannel")
+		s.delChannel <- entry
+	}()
+
+	c.AbortWithStatus(http.StatusAccepted)
 }
 
 func (s Server) sendJSONResultResp(c *gin.Context, id string, status int) {

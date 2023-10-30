@@ -83,6 +83,7 @@ func SetUpRouter(conf config.Conf, sh *shortener.Shortener) *gin.Engine {
 	r.POST(`/api/shorten`, uh.ShortenPost)
 	r.POST(`/api/shorten/batch`, uh.ShortenBatch)
 	r.GET(`/ping`, uh.Ping)
+	r.DELETE(`/api/user/urls`, uh.DeleteURLs)
 	r.NoRoute(uh.NoRoute)
 	return r
 }

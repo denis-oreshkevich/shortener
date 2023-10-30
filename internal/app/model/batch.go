@@ -29,3 +29,15 @@ func NewBatchRespEntry(corID string, id string) BatchRespEntry {
 		ShortURL:      fmt.Sprintf("%s/%s", baseURL, id),
 	}
 }
+
+type BatchDeleteEntry struct {
+	UserID   string
+	ShortIDs []string
+}
+
+func NewBatchDeleteEntry(userID string, shortIds []string) BatchDeleteEntry {
+	return BatchDeleteEntry{
+		UserID:   userID,
+		ShortIDs: shortIds,
+	}
+}
