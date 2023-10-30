@@ -141,25 +141,23 @@ func (ds *DBStorage) Ping(ctx context.Context) error {
 	return ds.db.PingContext(ctx)
 }
 
-func (ds *DBStorage) DeleteUserURLs(ctx context.Context, items []model.BatchDeleteEntry) error {
+func (ds *DBStorage) DeleteUserURLs(ctx context.Context, bde model.BatchDeleteEntry) error {
 	tx, err := ds.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin tx. %w", err)
 	}
 	defer tx.Rollback()
-	if err != nil {
-		return fmt.Errorf("prepare context. %w", err)
-	}
 	var errs []error
 	template := "update courses.shortener set is_deleted = true " +
 		"where user_id = $1 and short_url in ($2%s)"
-	for _, it := range items {
-		q := ds.buildDeleteQuery(it, template)
-		iDs := buildIDs(it)
-		if _, err := tx.ExecContext(ctx, q, iDs...); err != nil {
-			errs = append(errs, err)
-		}
+
+	q := ds.buildDeleteQuery(bde, template)
+	iDs := buildIDs(bde)
+
+	if _, err := tx.ExecContext(ctx, q, iDs...); err != nil {
+		errs = append(errs, err)
 	}
+
 	err = tx.Commit()
 	if err != nil {
 		return fmt.Errorf("tx commit. %w", err)

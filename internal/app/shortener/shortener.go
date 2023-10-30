@@ -76,19 +76,13 @@ func (sh *Shortener) FindUserURLs(ctx context.Context) ([]model.URLPair, error) 
 }
 
 func (sh *Shortener) DeleteUserURLs(in <-chan model.BatchDeleteEntry) {
-	resBatch := make([]model.BatchDeleteEntry, 0)
 	for del := range in {
-		logger.Log.Debug("received from channel in")
-		resBatch = append(resBatch, del)
-		size := len(resBatch)
-		logger.Log.Debug(fmt.Sprintf("current delete batch size = %d", size))
-		if size >= 2 {
-			err := sh.storage.DeleteUserURLs(context.TODO(), resBatch)
-			resBatch = make([]model.BatchDeleteEntry, 0)
-			if err != nil {
-				logger.Log.Error("delete user URLs.", zap.Error(err))
-				return
-			}
+		logger.Log.Debug("received from channel DeleteUserURLs")
+		//TODO Ask about context
+		err := sh.storage.DeleteUserURLs(context.TODO(), del)
+		if err != nil {
+			logger.Log.Error("delete user URLs.", zap.Error(err))
+			return
 		}
 	}
 }

@@ -81,36 +81,34 @@ func (ms *MapStorage) FindUserURLs(ctx context.Context, userID string) ([]model.
 	return res, nil
 }
 
-func (ms *MapStorage) DeleteUserURLs(ctx context.Context, items []model.BatchDeleteEntry) error {
+func (ms *MapStorage) DeleteUserURLs(ctx context.Context, bde model.BatchDeleteEntry) error {
 	ms.mx.Lock()
 	defer ms.mx.Unlock()
-	return ms.deleteUserURLsNotSync(ctx, items)
+	return ms.deleteUserURLsNotSync(ctx, bde)
 }
 
 func (ms *MapStorage) deleteUserURLsNotSync(ctx context.Context,
-	items []model.BatchDeleteEntry) error {
+	bde model.BatchDeleteEntry) error {
 	var errs []error
-	for _, de := range items {
-		_, ok := ms.userURLs[de.UserID]
+	_, ok := ms.userURLs[bde.UserID]
+	if !ok {
+		return fmt.Errorf("user URL slice doesnt exist userID = %s", bde.UserID)
+	}
+	for _, shID := range bde.ShortIDs {
+		url, ok := ms.items[shID]
 		if !ok {
-			return fmt.Errorf("user URL slice doesnt exist userID = %s", de.UserID)
+			errs = append(errs, fmt.Errorf("shortID doesnt exist userID = %s", bde.UserID))
+			logger.Log.Debug(fmt.Sprintf("shortID is not present,"+
+				"shortID = %s", bde.UserID))
+			continue
 		}
-		for _, shID := range de.ShortIDs {
-			url, ok := ms.items[shID]
-			if !ok {
-				errs = append(errs, fmt.Errorf("shortID doesnt exist userID = %s", de.UserID))
-				logger.Log.Debug(fmt.Sprintf("shortID is not present,"+
-					"shortID = %s", de.UserID))
-				continue
-			}
-			if de.UserID != url.UserID {
-				errs = append(errs, fmt.Errorf("shortID is not of provided user,"+
-					"shortID = %s, userI = %s", de.UserID, de.UserID))
-				continue
-			}
-			url.DeletedFlag = true
+		if bde.UserID != url.UserID {
+			errs = append(errs, fmt.Errorf("shortID is not of provided user,"+
+				"shortID = %s, userI = %s", bde.UserID, bde.UserID))
+			continue
 		}
-
+		url.DeletedFlag = true
+		ms.items[shID] = url
 	}
 	if len(errs) != 0 {
 		return errors.Join(errs...)

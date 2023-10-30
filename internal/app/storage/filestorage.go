@@ -125,7 +125,7 @@ func (fs *FileStorage) FindUserURLs(ctx context.Context, userID string) ([]model
 	return fs.cache.FindUserURLs(ctx, userID)
 }
 
-func (fs *FileStorage) DeleteUserURLs(ctx context.Context, items []model.BatchDeleteEntry) error {
+func (fs *FileStorage) DeleteUserURLs(ctx context.Context, bde model.BatchDeleteEntry) error {
 	fs.mx.Lock()
 	defer fs.mx.Unlock()
 	content := make(map[string]*FSModel)
@@ -135,21 +135,19 @@ func (fs *FileStorage) DeleteUserURLs(ctx context.Context, items []model.BatchDe
 		return fmt.Errorf("read file to map. %w", err)
 	}
 	var errs []error
-	for _, it := range items {
-		ids := it.ShortIDs
-		for _, id := range ids {
-			fsm, ok := content[id]
-			if !ok {
-				errs = append(errs, fmt.Errorf("shortID = %s, is not exist", id))
-				continue
-			}
-			if fsm.UserID != it.UserID {
-				errs = append(errs, fmt.Errorf("shortID = %s is not of userID = %s ",
-					id, it.UserID))
-				continue
-			}
-			fsm.DeletedFlag = true
+	ids := bde.ShortIDs
+	for _, id := range ids {
+		fsm, ok := content[id]
+		if !ok {
+			errs = append(errs, fmt.Errorf("shortID = %s, is not exist", id))
+			continue
 		}
+		if fsm.UserID != bde.UserID {
+			errs = append(errs, fmt.Errorf("shortID = %s is not of userID = %s ",
+				id, bde.UserID))
+			continue
+		}
+		fsm.DeletedFlag = true
 	}
 	err = fs.file.Truncate(0)
 	if err != nil {
