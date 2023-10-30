@@ -30,8 +30,8 @@ func (m *mockedStorage) FindURL(ctx context.Context, id string) (*storage.OrigUR
 	return args.Get(0).(*storage.OrigURL), args.Error(1)
 }
 
-func (m *mockedStorage) DeleteUserURLs(ctx context.Context, items []model.BatchDeleteEntry) error {
-	args := m.Called(ctx, items)
+func (m *mockedStorage) DeleteUserURLs(ctx context.Context, bde model.BatchDeleteEntry) error {
+	args := m.Called(ctx, bde)
 	return args.Error(0)
 }
 
