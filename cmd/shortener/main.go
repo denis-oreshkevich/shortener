@@ -70,7 +70,8 @@ func run() error {
 		sh.DeleteUserURLs(ctx, delChannel)
 	}()
 
-	r := SetUpRouter(conf, sh, delChannel)
+	uh := server.New(conf, sh, delChannel)
+	r := SetUpRouter(conf, uh)
 
 	err := r.Run(fmt.Sprintf("%s:%s", conf.Host(), conf.Port()))
 	if err != nil {
@@ -79,10 +80,7 @@ func run() error {
 	return nil
 }
 
-func SetUpRouter(conf config.Conf, sh *shortener.Shortener,
-	delChannel chan model.BatchDeleteEntry) *gin.Engine {
-	uh := server.New(conf, sh, delChannel)
-
+func SetUpRouter(conf config.Conf, uh *server.Server) *gin.Engine {
 	r := gin.New()
 
 	r.Use(gin.Recovery(), server.JWTAuth, server.Gzip, server.Logging)

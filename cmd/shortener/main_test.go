@@ -25,7 +25,9 @@ func TestPost(t *testing.T) {
 	conf := config.Get()
 	tStorage := new(mockedStorage)
 	short := shortener.New(tStorage)
-	r := SetUpRouter(conf, short)
+	delChannel := make(chan model.BatchDeleteEntry, 3)
+	uh := server.New(conf, short, delChannel)
+	r := SetUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -86,7 +88,9 @@ func TestGet(t *testing.T) {
 	conf := config.Get()
 	tStorage := new(mockedStorage)
 	short := shortener.New(tStorage)
-	r := SetUpRouter(conf, short)
+	delChannel := make(chan model.BatchDeleteEntry, 3)
+	uh := server.New(conf, short, delChannel)
+	r := SetUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -149,7 +153,9 @@ func TestShortenPost(t *testing.T) {
 	conf := config.Get()
 	tStorage := new(mockedStorage)
 	short := shortener.New(tStorage)
-	r := SetUpRouter(conf, short)
+	delChannel := make(chan model.BatchDeleteEntry, 3)
+	uh := server.New(conf, short, delChannel)
+	r := SetUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -225,7 +231,9 @@ func TestShortenBatch(t *testing.T) {
 	conf := config.Get()
 	tStorage := new(mockedStorage)
 	short := shortener.New(tStorage)
-	r := SetUpRouter(conf, short)
+	delChannel := make(chan model.BatchDeleteEntry, 3)
+	uh := server.New(conf, short, delChannel)
+	r := SetUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -291,7 +299,9 @@ func TestNoRoutes(t *testing.T) {
 	conf := config.Get()
 	tStorage := new(mockedStorage)
 	short := shortener.New(tStorage)
-	r := SetUpRouter(conf, short)
+	delChannel := make(chan model.BatchDeleteEntry, 3)
+	uh := server.New(conf, short, delChannel)
+	r := SetUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -349,7 +359,9 @@ func TestGzipCompression(t *testing.T) {
 	tStorage.On("SaveURL", mock.Anything, mock.Anything,
 		mock.Anything).Return("MMMMMMMM", nil)
 	short := shortener.New(tStorage)
-	r := SetUpRouter(conf, short)
+	delChannel := make(chan model.BatchDeleteEntry, 3)
+	uh := server.New(conf, short, delChannel)
+	r := SetUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
