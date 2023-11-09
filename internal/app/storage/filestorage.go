@@ -16,11 +16,12 @@ import (
 )
 
 type FileStorage struct {
-	mx    sync.RWMutex
-	inc   int64
-	cache *MapStorage
-	file  *os.File
-	rw    *bufio.ReadWriter
+	filename string
+	mx       sync.RWMutex
+	inc      int64
+	cache    *MapStorage
+	file     *os.File
+	rw       *bufio.ReadWriter
 }
 
 var _ Storage = (*FileStorage)(nil)
@@ -46,23 +47,24 @@ func NewFileStorage(filename string) (*FileStorage, error) {
 		if err != nil {
 			return nil, fmt.Errorf("NewFileStorage, Unmarshal line #%d %w", line, err)
 		}
-		cache.saveURLNotSync(shr.UserID, shr.ShortURL, shr.OriginalURL)
+		cache.saveURLNotSync(shr.ShortURL, NewOrigURL(shr.OriginalURL, shr.UserID, shr.DeletedFlag))
 		logger.Log.Debug(fmt.Sprintf("Initializied from file with id = %d, shortURL = %s, OriginalURL = %s", shr.ID, shr.ShortURL, shr.OriginalURL))
 		line++
 	}
 	logger.Log.Info(fmt.Sprintf("Initializing from file count = %d", line))
 	return &FileStorage{
-		inc:   line,
-		cache: cache,
-		file:  file,
-		rw:    rw,
+		filename: filename,
+		inc:      line,
+		cache:    cache,
+		file:     file,
+		rw:       rw,
 	}, nil
 }
 
 func (fs *FileStorage) SaveURL(ctx context.Context, userID string, url string) (string, error) {
 	id := atomic.AddInt64(&fs.inc, 1)
 	shURL := generator.RandString(8)
-	shorten := NewFSModel(id, shURL, url, userID)
+	shorten := NewFSModel(id, shURL, url, userID, false)
 	marsh, err := json.Marshal(shorten)
 	if err != nil {
 		return "", fmt.Errorf("fileStorage SaveURL, marshal json %w", err)
@@ -80,7 +82,7 @@ func (fs *FileStorage) SaveURL(ctx context.Context, userID string, url string) (
 		return "", fmt.Errorf("fileStorage SaveURL, flush file %w", err)
 	}
 
-	fs.cache.saveURLNotSync(userID, shURL, url)
+	fs.cache.saveURLNotSync(shURL, NewOrigURL(url, userID, false))
 
 	return shURL, nil
 }
@@ -93,7 +95,7 @@ func (fs *FileStorage) SaveURLBatch(ctx context.Context, userID string,
 	for _, b := range batch {
 		id := atomic.AddInt64(&fs.inc, 1)
 		shURL := generator.RandString(8)
-		shorten := NewFSModel(id, shURL, b.OriginalURL, userID)
+		shorten := NewFSModel(id, shURL, b.OriginalURL, userID, false)
 		marsh, err := json.Marshal(shorten)
 		if err != nil {
 			return nil, fmt.Errorf("fileStorage SaveURLBatch, marshal json %w", err)
@@ -105,7 +107,7 @@ func (fs *FileStorage) SaveURLBatch(ctx context.Context, userID string,
 		if err = fs.rw.WriteByte('\n'); err != nil {
 			return nil, fmt.Errorf("fileStorage SaveURLBatch. write byte %w", err)
 		}
-		fs.cache.saveURLNotSync(userID, shURL, b.OriginalURL)
+		fs.cache.saveURLNotSync(shURL, NewOrigURL(b.OriginalURL, userID, false))
 		resp := model.NewBatchRespEntry(b.CorrelationID, shURL)
 		bResp = append(bResp, resp)
 	}
@@ -115,12 +117,93 @@ func (fs *FileStorage) SaveURLBatch(ctx context.Context, userID string,
 	return bResp, nil
 }
 
-func (fs *FileStorage) FindURL(ctx context.Context, id string) (string, error) {
+func (fs *FileStorage) FindURL(ctx context.Context, id string) (*OrigURL, error) {
 	return fs.cache.FindURL(ctx, id)
 }
 
 func (fs *FileStorage) FindUserURLs(ctx context.Context, userID string) ([]model.URLPair, error) {
 	return fs.cache.FindUserURLs(ctx, userID)
+}
+
+func (fs *FileStorage) DeleteUserURLs(ctx context.Context, bde model.BatchDeleteEntry) error {
+	fs.mx.Lock()
+	defer fs.mx.Unlock()
+	content := make(map[string]*FSModel)
+	var shr = &FSModel{}
+	err := fs.readFileToMap(shr, content)
+	if err != nil {
+		return fmt.Errorf("read file to map. %w", err)
+	}
+	var errs []error
+	ids := bde.ShortIDs
+	for _, id := range ids {
+		fsm, ok := content[id]
+		if !ok {
+			errs = append(errs, fmt.Errorf("shortID = %s, is not exist", id))
+			continue
+		}
+		if fsm.UserID != bde.UserID {
+			errs = append(errs, fmt.Errorf("shortID = %s is not of userID = %s ",
+				id, bde.UserID))
+			continue
+		}
+		fsm.DeletedFlag = true
+	}
+	err = fs.file.Truncate(0)
+	if err != nil {
+		return fmt.Errorf("truncate file. %w", err)
+	}
+	if _, err = fs.file.Seek(0, 0); err != nil {
+		return fmt.Errorf("seek file. %w", err)
+	}
+	fs.cache = NewMapStorage()
+	err = fs.writeContentToCacheAndFile(content)
+	if err != nil {
+		return fmt.Errorf("write content to cache and file. %w", err)
+	}
+	if len(errs) != 0 {
+		return errors.Join(errs...)
+	}
+	return nil
+}
+func (fs *FileStorage) readFileToMap(shr *FSModel, content map[string]*FSModel) error {
+	for {
+		data, err := fs.rw.ReadBytes('\n')
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return fmt.Errorf("can't read file. %w", err)
+		}
+		err = json.Unmarshal(data, shr)
+		if err != nil {
+			return fmt.Errorf("unmarshal JSON from file %w", err)
+		}
+		content[shr.ShortURL] = shr
+	}
+	return nil
+}
+
+func (fs *FileStorage) writeContentToCacheAndFile(content map[string]*FSModel) error {
+	for _, cont := range content {
+		marsh, err := json.Marshal(cont)
+		if err != nil {
+			return fmt.Errorf("marshal json %w", err)
+		}
+
+		if _, err = fs.rw.Write(marsh); err != nil {
+			return fmt.Errorf("save to file %w", err)
+		}
+		if err = fs.rw.WriteByte('\n'); err != nil {
+			return fmt.Errorf("write byte %w", err)
+		}
+		fs.cache.saveURLNotSync(cont.ShortURL, NewOrigURL(cont.OriginalURL,
+			cont.UserID, cont.DeletedFlag))
+	}
+	if err := fs.rw.Flush(); err != nil {
+		return fmt.Errorf("flush file %w", err)
+	}
+	return nil
 }
 
 func (fs *FileStorage) Ping(ctx context.Context) error {

@@ -8,6 +8,8 @@ import (
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/generator"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"strconv"
+	"strings"
 )
 
 type DBStorage struct {
@@ -88,17 +90,20 @@ func (ds *DBStorage) SaveURLBatch(ctx context.Context, userID string,
 	return bResp, nil
 }
 
-func (ds *DBStorage) FindURL(ctx context.Context, shortURL string) (string, error) {
-	stmt, err := ds.db.PrepareContext(ctx, "SELECT original_url FROM courses.shortener sh "+
-		"WHERE sh.short_url = $1")
+func (ds *DBStorage) FindURL(ctx context.Context, shortURL string) (*OrigURL, error) {
+	stmt, err := ds.db.PrepareContext(ctx, "SELECT original_url, is_deleted "+
+		"FROM courses.shortener sh WHERE sh.short_url = $1")
 	if err != nil {
-		return "", fmt.Errorf("prepare context. %w", err)
+		return nil, fmt.Errorf("prepare context. %w", err)
 	}
 	defer stmt.Close()
 	row := stmt.QueryRowContext(ctx, shortURL)
-	var orig string
-	if err := row.Scan(&orig); err != nil {
-		return "", fmt.Errorf("cannot scan value. %w", err)
+	orig := &OrigURL{}
+	if err := row.Scan(&orig.OriginalURL, &orig.DeletedFlag); err != nil {
+		return nil, fmt.Errorf("cannot scan value. %w", err)
+	}
+	if orig.DeletedFlag {
+		return nil, ErrResultIsDeleted
 	}
 	return orig, nil
 }
@@ -136,6 +141,52 @@ func (ds *DBStorage) Ping(ctx context.Context) error {
 	return ds.db.PingContext(ctx)
 }
 
+func (ds *DBStorage) DeleteUserURLs(ctx context.Context, bde model.BatchDeleteEntry) error {
+	tx, err := ds.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx. %w", err)
+	}
+	defer tx.Rollback()
+	var errs []error
+	template := "update courses.shortener set is_deleted = true " +
+		"where user_id = $1 and short_url in ($2%s)"
+
+	q := ds.buildDeleteQuery(bde, template)
+	iDs := buildIDs(bde)
+
+	if _, err := tx.ExecContext(ctx, q, iDs...); err != nil {
+		errs = append(errs, err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("tx commit. %w", err)
+	}
+	if len(errs) != 0 {
+		return errors.Join(errs...)
+	}
+	return nil
+}
+
+func buildIDs(it model.BatchDeleteEntry) []any {
+	var iDs = make([]any, len(it.ShortIDs)+1)
+	iDs[0] = it.UserID
+	for i := 1; i < len(iDs); i++ {
+		iDs[i] = it.ShortIDs[i-1]
+	}
+	return iDs
+}
+
+func (ds *DBStorage) buildDeleteQuery(it model.BatchDeleteEntry, template string) string {
+	l := len(it.ShortIDs)
+	builder := strings.Builder{}
+	for i := 3; i <= l+1; i++ {
+		builder.WriteString(", $")
+		builder.WriteString(strconv.Itoa(i))
+	}
+	return fmt.Sprintf(template, builder.String())
+}
+
 func (ds *DBStorage) CreateTables() error {
 	ddl := `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 	CREATE SCHEMA IF NOT EXISTS courses;
@@ -143,7 +194,8 @@ func (ds *DBStorage) CreateTables() error {
 	ALTER TABLE courses.shortener ADD COLUMN IF NOT EXISTS id uuid PRIMARY KEY DEFAULT uuid_generate_v4();
 	ALTER TABLE courses.shortener ADD COLUMN IF NOT EXISTS short_url varchar(8) UNIQUE NOT NULL;
 	ALTER TABLE courses.shortener ADD COLUMN IF NOT EXISTS original_url varchar UNIQUE NOT NULL;
-	ALTER TABLE courses.shortener ADD COLUMN IF NOT EXISTS user_id uuid NOT NULL;`
+	ALTER TABLE courses.shortener ADD COLUMN IF NOT EXISTS user_id uuid NOT NULL;
+	ALTER TABLE courses.shortener ADD COLUMN IF NOT EXISTS is_deleted boolean NOT NULL default false;`
 
 	tx, err := ds.db.Begin()
 	if err != nil {

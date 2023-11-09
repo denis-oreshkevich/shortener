@@ -3,8 +3,11 @@ package shortener
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/denis-oreshkevich/shortener/internal/app/storage"
+	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
+	"go.uber.org/zap"
 )
 
 var ErrUserIsNew = errors.New("user is new")
@@ -22,7 +25,7 @@ func New(st storage.Storage) *Shortener {
 }
 
 func (sh *Shortener) SaveURL(ctx context.Context, url string) (string, error) {
-	userID, err := sh.getUserID(ctx)
+	userID, err := sh.GetUserID(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -31,14 +34,18 @@ func (sh *Shortener) SaveURL(ctx context.Context, url string) (string, error) {
 
 func (sh *Shortener) SaveURLBatch(ctx context.Context,
 	batch []model.BatchReqEntry) ([]model.BatchRespEntry, error) {
-	userID, err := sh.getUserID(ctx)
+	userID, err := sh.GetUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return sh.storage.SaveURLBatch(ctx, userID, batch)
 }
 func (sh *Shortener) FindURL(ctx context.Context, id string) (string, error) {
-	return sh.storage.FindURL(ctx, id)
+	origURL, err := sh.storage.FindURL(ctx, id)
+	if err != nil {
+		return "", fmt.Errorf("storage.FindURL. %w", err)
+	}
+	return origURL.OriginalURL, nil
 }
 
 func (sh *Shortener) FindUserURLs(ctx context.Context) ([]model.URLPair, error) {
@@ -53,7 +60,7 @@ func (sh *Shortener) FindUserURLs(ctx context.Context) ([]model.URLPair, error) 
 		}
 	}
 
-	userID, err := sh.getUserID(ctx)
+	userID, err := sh.GetUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -68,11 +75,22 @@ func (sh *Shortener) FindUserURLs(ctx context.Context) ([]model.URLPair, error) 
 	return pairs, nil
 }
 
+func (sh *Shortener) DeleteUserURLs(ctx context.Context, in <-chan model.BatchDeleteEntry) {
+	for del := range in {
+		logger.Log.Debug("received from channel DeleteUserURLs")
+		err := sh.storage.DeleteUserURLs(ctx, del)
+		if err != nil {
+			logger.Log.Error("delete user URLs.", zap.Error(err))
+			return
+		}
+	}
+}
+
 func (sh *Shortener) Ping(ctx context.Context) error {
 	return sh.storage.Ping(ctx)
 }
 
-func (sh *Shortener) getUserID(ctx context.Context) (string, error) {
+func (sh *Shortener) GetUserID(ctx context.Context) (string, error) {
 	value := ctx.Value(model.UserIDKey{})
 	if value == nil {
 		return "", errors.New("userID is not present")

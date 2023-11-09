@@ -9,6 +9,7 @@ import (
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/denis-oreshkevich/shortener/internal/app/server"
 	"github.com/denis-oreshkevich/shortener/internal/app/shortener"
+	"github.com/denis-oreshkevich/shortener/internal/app/storage"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -24,7 +25,9 @@ func TestPost(t *testing.T) {
 	conf := config.Get()
 	tStorage := new(mockedStorage)
 	short := shortener.New(tStorage)
-	r := SetUpRouter(conf, short)
+	delChannel := make(chan model.BatchDeleteEntry, 3)
+	uh := server.New(conf, short, delChannel)
+	r := SetUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -85,7 +88,9 @@ func TestGet(t *testing.T) {
 	conf := config.Get()
 	tStorage := new(mockedStorage)
 	short := shortener.New(tStorage)
-	r := SetUpRouter(conf, short)
+	delChannel := make(chan model.BatchDeleteEntry, 3)
+	uh := server.New(conf, short, delChannel)
+	r := SetUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -96,7 +101,9 @@ func TestGet(t *testing.T) {
 			name:   "simple Get test #1",
 			isMock: true,
 			mockOn: func(m *mockedStorage) *mock.Call {
-				return m.On("FindURL", mock.Anything, "AAAAAAAA").Return("http://localhost:30001/", nil)
+				origURL := storage.NewOrigURL("http://localhost:30001/", "", false)
+				return m.On("FindURL", mock.Anything, "AAAAAAAA").Return(
+					&origURL, nil)
 			},
 			reqFunc: func() *http.Request {
 				req := httptest.NewRequest("GET", srv.URL+conf.BasePath()+"/AAAAAAAA", nil)
@@ -126,7 +133,7 @@ func TestGet(t *testing.T) {
 			name:   "not stored url Get test #3",
 			isMock: true,
 			mockOn: func(m *mockedStorage) *mock.Call {
-				return m.On("FindURL", mock.Anything, "HHHHHHHH").Return("", errors.New("test error"))
+				return m.On("FindURL", mock.Anything, "HHHHHHHH").Return(&storage.OrigURL{}, errors.New("test error"))
 			},
 			reqFunc: func() *http.Request {
 				req := httptest.NewRequest("GET", srv.URL+conf.BasePath()+"/HHHHHHHH", nil)
@@ -146,7 +153,9 @@ func TestShortenPost(t *testing.T) {
 	conf := config.Get()
 	tStorage := new(mockedStorage)
 	short := shortener.New(tStorage)
-	r := SetUpRouter(conf, short)
+	delChannel := make(chan model.BatchDeleteEntry, 3)
+	uh := server.New(conf, short, delChannel)
+	r := SetUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -222,7 +231,9 @@ func TestShortenBatch(t *testing.T) {
 	conf := config.Get()
 	tStorage := new(mockedStorage)
 	short := shortener.New(tStorage)
-	r := SetUpRouter(conf, short)
+	delChannel := make(chan model.BatchDeleteEntry, 3)
+	uh := server.New(conf, short, delChannel)
+	r := SetUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -288,7 +299,9 @@ func TestNoRoutes(t *testing.T) {
 	conf := config.Get()
 	tStorage := new(mockedStorage)
 	short := shortener.New(tStorage)
-	r := SetUpRouter(conf, short)
+	delChannel := make(chan model.BatchDeleteEntry, 3)
+	uh := server.New(conf, short, delChannel)
+	r := SetUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -346,7 +359,9 @@ func TestGzipCompression(t *testing.T) {
 	tStorage.On("SaveURL", mock.Anything, mock.Anything,
 		mock.Anything).Return("MMMMMMMM", nil)
 	short := shortener.New(tStorage)
-	r := SetUpRouter(conf, short)
+	delChannel := make(chan model.BatchDeleteEntry, 3)
+	uh := server.New(conf, short, delChannel)
+	r := SetUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -358,7 +373,7 @@ func TestGzipCompression(t *testing.T) {
 	successBody := `{
         "result":"` + conf.BaseURL() + "/MMMMMMMM" + `"
 	}`
-	client := createHTTPAuthClient(srv)
+	client := createHTTPAuthClient(t, srv)
 	t.Run("sends_gzip_json", func(t *testing.T) {
 		buf := bytes.NewBuffer(nil)
 		zb := gzip.NewWriter(buf)
