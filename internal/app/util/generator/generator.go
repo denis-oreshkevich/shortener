@@ -2,6 +2,7 @@ package generator
 
 import (
 	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
+	"github.com/google/uuid"
 	"math/rand"
 	"time"
 )
@@ -15,4 +16,9 @@ func RandString(length int) string {
 	}
 	logger.Log.Debug("generated ID is " + string(result))
 	return string(result)
+}
+
+func UUIDString() string {
+	id := uuid.New()
+	return id.String()
 }
