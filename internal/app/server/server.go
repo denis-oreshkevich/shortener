@@ -28,15 +28,13 @@ type Server struct {
 	delChannel chan model.BatchDeleteEntry
 }
 
-func New(conf config.Conf, sh *shortener.Shortener) *Server {
+func New(conf config.Conf, sh *shortener.Shortener,
+	delChannel chan model.BatchDeleteEntry) *Server {
 	inst := &Server{
 		conf:       conf,
 		sh:         sh,
-		delChannel: make(chan model.BatchDeleteEntry, 3),
+		delChannel: delChannel,
 	}
-	go func() {
-		sh.DeleteUserURLs(inst.delChannel)
-	}()
 	return inst
 }
 

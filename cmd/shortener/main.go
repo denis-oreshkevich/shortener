@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/denis-oreshkevich/shortener/internal/app/config"
+	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/denis-oreshkevich/shortener/internal/app/server"
 	"github.com/denis-oreshkevich/shortener/internal/app/shortener"
 	"github.com/denis-oreshkevich/shortener/internal/app/storage"
@@ -59,9 +61,16 @@ func run() error {
 		s = mapStorage
 		logger.Log.Info("using mapStorage as storage")
 	}
+	ctx := context.Background()
+	delChannel := make(chan model.BatchDeleteEntry, 3)
 	sh := shortener.New(s)
 
-	r := SetUpRouter(conf, sh)
+	//delete worker
+	go func() {
+		sh.DeleteUserURLs(ctx, delChannel)
+	}()
+
+	r := SetUpRouter(conf, sh, delChannel)
 
 	err := r.Run(fmt.Sprintf("%s:%s", conf.Host(), conf.Port()))
 	if err != nil {
@@ -70,8 +79,9 @@ func run() error {
 	return nil
 }
 
-func SetUpRouter(conf config.Conf, sh *shortener.Shortener) *gin.Engine {
-	uh := server.New(conf, sh)
+func SetUpRouter(conf config.Conf, sh *shortener.Shortener,
+	delChannel chan model.BatchDeleteEntry) *gin.Engine {
+	uh := server.New(conf, sh, delChannel)
 
 	r := gin.New()
 

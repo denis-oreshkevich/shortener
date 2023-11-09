@@ -75,11 +75,10 @@ func (sh *Shortener) FindUserURLs(ctx context.Context) ([]model.URLPair, error) 
 	return pairs, nil
 }
 
-func (sh *Shortener) DeleteUserURLs(in <-chan model.BatchDeleteEntry) {
+func (sh *Shortener) DeleteUserURLs(ctx context.Context, in <-chan model.BatchDeleteEntry) {
 	for del := range in {
 		logger.Log.Debug("received from channel DeleteUserURLs")
-		//TODO Ask about context
-		err := sh.storage.DeleteUserURLs(context.TODO(), del)
+		err := sh.storage.DeleteUserURLs(ctx, del)
 		if err != nil {
 			logger.Log.Error("delete user URLs.", zap.Error(err))
 			return
