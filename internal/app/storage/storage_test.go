@@ -4,12 +4,18 @@ import (
 	"context"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/generator"
 	"github.com/stretchr/testify/require"
+	"os"
 	"testing"
 )
 
 func BenchmarkStorageSave(b *testing.B) {
-	fs, err := NewFileStorage("./test")
+	fn := "./test"
+	fs, err := NewFileStorage(fn)
 	require.NoError(b, err)
+	defer func() {
+		err := os.Remove(fn)
+		require.NoError(b, err)
+	}()
 	ms := NewMapStorage()
 
 	ctx := context.Background()
@@ -28,5 +34,4 @@ func BenchmarkStorageSave(b *testing.B) {
 			ms.SaveURL(ctx, userID, baseURL+generator.UUIDString())
 		}
 	})
-
 }
