@@ -4,12 +4,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
-	"github.com/denis-oreshkevich/shortener/internal/app/util/validator"
 	"net"
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
+	"github.com/denis-oreshkevich/shortener/internal/app/util/validator"
 )
 
 const (

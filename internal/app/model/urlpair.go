@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+
 	"github.com/denis-oreshkevich/shortener/internal/app/config"
 )
 

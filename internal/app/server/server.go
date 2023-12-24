@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+
 	"github.com/denis-oreshkevich/shortener/internal/app/config"
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/denis-oreshkevich/shortener/internal/app/shortener"
@@ -12,8 +15,6 @@ import (
 	"github.com/denis-oreshkevich/shortener/internal/app/util/validator"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"io"
-	"net/http"
 )
 
 const (
