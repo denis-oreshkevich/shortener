@@ -39,6 +39,7 @@ func New(conf config.Conf, sh *shortener.Shortener,
 	return inst
 }
 
+// Post used method to save URL and returns short URL.
 func (s Server) Post(c *gin.Context) {
 	req := c.Request
 	body, err := io.ReadAll(req.Body)
@@ -70,6 +71,9 @@ func (s Server) Post(c *gin.Context) {
 	c.String(http.StatusCreated, url)
 }
 
+// Get method used to get original URL by short URL.
+// If short URL is not valid returns Bad Request status (400).
+// If everything is fine redirects the request with Temporary Redirect status (307).
 func (s Server) Get(c *gin.Context) {
 	id := c.Param("id")
 	log := logger.Log.With(zap.String("id", id))
@@ -94,6 +98,10 @@ func (s Server) Get(c *gin.Context) {
 	c.Redirect(http.StatusTemporaryRedirect, url)
 }
 
+// GetUsersURLs method used to get all URLs that current user saved.
+// If user is new returns Unauthorized status (401).
+// If no URLs found returns No Content status (204).
+// If everything is fine returns OK status (200).
 func (s Server) GetUsersURLs(c *gin.Context) {
 	ctx := c.Request.Context()
 	urls, err := s.sh.FindUserURLs(ctx)
@@ -122,6 +130,9 @@ func (s Server) GetUsersURLs(c *gin.Context) {
 	c.Data(http.StatusOK, ApplicationJSON, resp)
 }
 
+// ShortenPost saves the URL and return result in JSON format with status OK (200).
+// Returns status Conflict (409) if URL already exist.
+// This method is similar in purpose with [Server.Post].
 func (s Server) ShortenPost(c *gin.Context) {
 	req := c.Request
 	body, err := io.ReadAll(req.Body)
@@ -155,6 +166,8 @@ func (s Server) ShortenPost(c *gin.Context) {
 	s.sendJSONResultResp(c, id, http.StatusCreated)
 }
 
+// Ping method used to check is DB connection active.
+// Returns status OK or Internal Server Error (500) if something went wrong.
 func (s Server) Ping(c *gin.Context) {
 	ctx := c.Request.Context()
 	err := s.sh.Ping(ctx)
@@ -166,10 +179,13 @@ func (s Server) Ping(c *gin.Context) {
 	c.AbortWithStatus(http.StatusOK)
 }
 
+// NoRoute method used when no routes with this path or method were foundЮ
 func (s Server) NoRoute(c *gin.Context) {
 	c.Data(http.StatusBadRequest, TextPlain, []byte("Роут не найден"))
 }
 
+// ShortenBatch method used to store many URLs by the single request.
+// Returns status Created (201) if everything is fine.
 func (s Server) ShortenBatch(c *gin.Context) {
 	req := c.Request
 	body, err := io.ReadAll(req.Body)
@@ -204,6 +220,8 @@ func (s Server) ShortenBatch(c *gin.Context) {
 	c.Data(http.StatusCreated, ApplicationJSON, resp)
 }
 
+// DeleteURLs method works async. So the values are not removed instantly.
+// It sets delete status for URL.
 func (s Server) DeleteURLs(c *gin.Context) {
 	req := c.Request
 	ctx := c.Request.Context()
