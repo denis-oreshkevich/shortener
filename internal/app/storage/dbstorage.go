@@ -5,12 +5,17 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io/fs"
 	"strconv"
 	"strings"
+	"sync"
+
+	"github.com/denis-oreshkevich/shortener/migration"
 
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/generator"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
 )
 
 // DBStorage database storage.
@@ -20,18 +25,45 @@ type DBStorage struct {
 
 var _ Storage = (*DBStorage)(nil)
 
+var (
+	db     *sql.DB
+	pgOnce sync.Once
+
+	dbErr error
+)
+
 // ErrDBConflict error happens on DB conflict.
 var ErrDBConflict = errors.New("db conflict while executing sql query")
 
 // NewDBStorage creates new [*DBStorage].
 func NewDBStorage(dbDSN string) (*DBStorage, error) {
-	db, err := sql.Open("pgx", dbDSN)
+	pool, err := initDatasource(dbDSN)
 	if err != nil {
-		return nil, fmt.Errorf("NewDBStorage, Open %w", err)
+		return nil, fmt.Errorf("initPool: %w", err)
 	}
 	return &DBStorage{
-		db: db,
+		db: pool,
 	}, nil
+}
+
+func initDatasource(dbDSN string) (*sql.DB, error) {
+	pgOnce.Do(func() {
+		pool, err := sql.Open("pgx", dbDSN)
+		if err != nil {
+			dbErr = fmt.Errorf("pgxpool.New: %w", err)
+			return
+		}
+		if err = pool.Ping(); err != nil {
+			dbErr = fmt.Errorf("pool.Ping: %w", err)
+			return
+		}
+		if err = applyMigration(dbDSN, migration.SQLFiles); err != nil {
+			dbErr = fmt.Errorf("applyMigration: %w", err)
+			return
+		}
+		db = pool
+	})
+	return db, dbErr
 }
 
 // SaveURL saves original URL to DB and returns short URL.
@@ -197,29 +229,24 @@ func (ds *DBStorage) buildDeleteQuery(it model.BatchDeleteEntry, template string
 	return fmt.Sprintf(template, builder.String())
 }
 
-// CreateTables Creates schemas and tables in DB.
-func (ds *DBStorage) CreateTables() error {
-	ddl := `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-	CREATE SCHEMA IF NOT EXISTS courses;
-	CREATE TABLE IF NOT EXISTS courses.shortener();
-	ALTER TABLE courses.shortener ADD COLUMN IF NOT EXISTS id uuid PRIMARY KEY DEFAULT uuid_generate_v4();
-	ALTER TABLE courses.shortener ADD COLUMN IF NOT EXISTS short_url varchar(8) UNIQUE NOT NULL;
-	ALTER TABLE courses.shortener ADD COLUMN IF NOT EXISTS original_url varchar UNIQUE NOT NULL;
-	ALTER TABLE courses.shortener ADD COLUMN IF NOT EXISTS user_id uuid NOT NULL;
-	ALTER TABLE courses.shortener ADD COLUMN IF NOT EXISTS is_deleted boolean NOT NULL default false;`
+// applyMigration patches DB.
+func applyMigration(dsn string, fsys fs.FS) error {
+	//TODO ask about conv between pool
+	//db := stdlib.OpenDBFromPool(db, nil)
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		return fmt.Errorf("sql.Open: %w", err)
+	}
+	defer db.Close()
 
-	tx, err := ds.db.Begin()
-	if err != nil {
-		return fmt.Errorf("tx begin. %w", err)
+	goose.SetBaseFS(fsys)
+	goose.SetSequential(true)
+
+	if err := goose.SetDialect("postgres"); err != nil {
+		return fmt.Errorf("goose.SetDialect: %w", err)
 	}
-	_, err = tx.Exec(ddl)
-	if err != nil {
-		tx.Rollback()
-		return fmt.Errorf("execute ddl. %w", err)
-	}
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("tx commit. %w", err)
+	if err := goose.Up(db, "."); err != nil {
+		return fmt.Errorf("goose.Up: %w", err)
 	}
 	return nil
 }

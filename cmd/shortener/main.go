@@ -36,16 +36,13 @@ func main() {
 
 func run() error {
 	conf := config.Get()
+	ctx := context.Background()
 
 	var s storage.Storage
 	if conf.DatabaseDSN() != "" {
 		dbStorage, err := storage.NewDBStorage(conf.DatabaseDSN())
 		if err != nil {
 			return fmt.Errorf("initializing db storage %w", err)
-		}
-		err = dbStorage.CreateTables()
-		if err != nil {
-			return fmt.Errorf("create tables %w", err)
 		}
 		defer dbStorage.Close()
 		s = dbStorage
@@ -63,7 +60,7 @@ func run() error {
 		s = mapStorage
 		logger.Log.Info("using mapStorage as storage")
 	}
-	ctx := context.Background()
+
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	sh := shortener.New(s)
 
