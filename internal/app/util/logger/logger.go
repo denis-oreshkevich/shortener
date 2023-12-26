@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// Log Global logger instance.
 var Log = zap.NewNop()
 
 // Initialize func initializing new Log instance.

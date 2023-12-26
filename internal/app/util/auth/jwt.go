@@ -9,6 +9,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
+// Constants for JWT generation.
 const (
 	SecretKey = "MegaSecretKey"
 	TokenExp  = time.Hour * 5

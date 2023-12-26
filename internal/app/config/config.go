@@ -13,6 +13,7 @@ import (
 	"github.com/denis-oreshkevich/shortener/internal/app/util/validator"
 )
 
+// Constants for configuration.
 const (
 	// ServerAddressEnvName Server address environment variable name.
 	ServerAddressEnvName = "SERVER_ADDRESS"

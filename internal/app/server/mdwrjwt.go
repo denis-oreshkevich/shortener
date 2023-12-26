@@ -13,10 +13,8 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	// UserCookieName cookie name for JWT.
-	UserCookieName = `SESSION`
-)
+// UserCookieName cookie name for JWT.
+const UserCookieName = `SESSION`
 
 // JWTAuth func to check user's authentication.
 // If user is not authenticated this func will authenticate it.
