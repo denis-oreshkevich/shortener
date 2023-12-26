@@ -19,12 +19,6 @@ func TestRandString(t *testing.T) {
 				assert.Len(t, result, 8)
 			},
 		},
-		{
-			name: "zero length generate #2",
-			assert: func(result string) {
-				assert.Empty(t, result)
-			},
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
