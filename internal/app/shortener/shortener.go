@@ -11,20 +11,27 @@ import (
 	"go.uber.org/zap"
 )
 
+// ErrUserIsNew indicates that user is new.
 var ErrUserIsNew = errors.New("user is new")
+
+// ErrUserItemsNotFound indicates that user URLs not found.
 var ErrUserItemsNotFound = errors.New("user items not found")
 
 // TODO think about transactions on this level
+
+// Shortener model represents business logic layer.
 type Shortener struct {
 	storage storage.Storage
 }
 
+// New creates new [*Shortener].
 func New(st storage.Storage) *Shortener {
 	return &Shortener{
 		storage: st,
 	}
 }
 
+// SaveURL saves URL to storage and returns back short ID.
 func (sh *Shortener) SaveURL(ctx context.Context, url string) (string, error) {
 	userID, err := sh.GetUserID(ctx)
 	if err != nil {
@@ -33,6 +40,7 @@ func (sh *Shortener) SaveURL(ctx context.Context, url string) (string, error) {
 	return sh.storage.SaveURL(ctx, userID, url)
 }
 
+// SaveURLBatch saves many URLs to storage and return [[]model.BatchRespEntry] back.
 func (sh *Shortener) SaveURLBatch(ctx context.Context,
 	batch []model.BatchReqEntry) ([]model.BatchRespEntry, error) {
 	userID, err := sh.GetUserID(ctx)
@@ -41,6 +49,8 @@ func (sh *Shortener) SaveURLBatch(ctx context.Context,
 	}
 	return sh.storage.SaveURLBatch(ctx, userID, batch)
 }
+
+// FindURL finds original URL by short ID.
 func (sh *Shortener) FindURL(ctx context.Context, id string) (string, error) {
 	origURL, err := sh.storage.FindURL(ctx, id)
 	if err != nil {
@@ -49,6 +59,7 @@ func (sh *Shortener) FindURL(ctx context.Context, id string) (string, error) {
 	return origURL.OriginalURL, nil
 }
 
+// FindUserURLs finds user's URLs.
 func (sh *Shortener) FindUserURLs(ctx context.Context) ([]model.URLPair, error) {
 	value := ctx.Value(model.IsUserNew{})
 	if value != nil {
@@ -76,6 +87,7 @@ func (sh *Shortener) FindUserURLs(ctx context.Context) ([]model.URLPair, error) 
 	return pairs, nil
 }
 
+// DeleteUserURLs deletes user's URLs.
 func (sh *Shortener) DeleteUserURLs(ctx context.Context, in <-chan model.BatchDeleteEntry) {
 	for del := range in {
 		logger.Log.Debug("received from channel DeleteUserURLs")
@@ -87,10 +99,12 @@ func (sh *Shortener) DeleteUserURLs(ctx context.Context, in <-chan model.BatchDe
 	}
 }
 
+// Ping pings storage.
 func (sh *Shortener) Ping(ctx context.Context) error {
 	return sh.storage.Ping(ctx)
 }
 
+// GetUserID gets user ID from context.
 func (sh *Shortener) GetUserID(ctx context.Context) (string, error) {
 	value := ctx.Value(model.UserIDKey{})
 	if value == nil {

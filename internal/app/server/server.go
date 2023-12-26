@@ -17,18 +17,21 @@ import (
 	"go.uber.org/zap"
 )
 
+// Content-type constants
 const (
 	ContentType     = "Content-type"
 	TextPlain       = "text/plain; charset=utf-8"
 	ApplicationJSON = "application/json; charset=utf-8"
 )
 
+// Server structure represents holder for all handlers.
 type Server struct {
 	conf       config.Conf
 	sh         *shortener.Shortener
 	delChannel chan model.BatchDeleteEntry
 }
 
+// New creates new [Server].
 func New(conf config.Conf, sh *shortener.Shortener,
 	delChannel chan model.BatchDeleteEntry) *Server {
 	inst := &Server{

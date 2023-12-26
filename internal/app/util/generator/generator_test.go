@@ -9,21 +9,18 @@ import (
 func TestRandString(t *testing.T) {
 	tests := []struct {
 		name   string
-		length int
 		assert func(result string)
 	}{
 		{
-			name:   "simple generate #1",
-			length: 8,
+			name: "simple generate #1",
 			assert: func(result string) {
-				randStr := RandString(8)
+				randStr := RandString()
 				assert.NotEqual(t, result, randStr)
 				assert.Len(t, result, 8)
 			},
 		},
 		{
-			name:   "zero length generate #2",
-			length: 0,
+			name: "zero length generate #2",
 			assert: func(result string) {
 				assert.Empty(t, result)
 			},
@@ -31,7 +28,7 @@ func TestRandString(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res := RandString(tt.length)
+			res := RandString()
 			tt.assert(res)
 		})
 	}

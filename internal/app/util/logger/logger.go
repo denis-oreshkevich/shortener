@@ -9,6 +9,7 @@ import (
 
 var Log = zap.NewNop()
 
+// Initialize func initializing new Log instance.
 func Initialize(level string) error {
 	lvl, err := zap.ParseAtomicLevel(level)
 	if err != nil {

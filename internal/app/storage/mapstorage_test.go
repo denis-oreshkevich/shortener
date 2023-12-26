@@ -172,6 +172,7 @@ func TestMapStorage_SaveURL(t *testing.T) {
 			assert: func(shURL string, err error) {
 				require.NoError(t, err)
 				url, err := storage.FindURL(ctx, shURL)
+				require.NoError(t, err)
 				assert.Equal(t, "http://localhost:30000/", url.OriginalURL)
 			},
 		},

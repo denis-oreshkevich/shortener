@@ -13,14 +13,17 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+// DBStorage database storage.
 type DBStorage struct {
 	db *sql.DB
 }
 
 var _ Storage = (*DBStorage)(nil)
 
+// ErrDBConflict error happens on DB conflict.
 var ErrDBConflict = errors.New("db conflict while executing sql query")
 
+// NewDBStorage creates new [*DBStorage].
 func NewDBStorage(dbDSN string) (*DBStorage, error) {
 	db, err := sql.Open("pgx", dbDSN)
 	if err != nil {
@@ -31,6 +34,7 @@ func NewDBStorage(dbDSN string) (*DBStorage, error) {
 	}, nil
 }
 
+// SaveURL saves original URL to DB and returns short URL.
 func (ds *DBStorage) SaveURL(ctx context.Context, userID string, url string) (string, error) {
 	stmt, err := ds.db.PrepareContext(ctx, "WITH new_row AS ("+
 		"INSERT INTO courses.shortener(short_url, original_url, user_id) VALUES ($1, $2, $3) "+
@@ -42,7 +46,7 @@ func (ds *DBStorage) SaveURL(ctx context.Context, userID string, url string) (st
 	}
 	defer stmt.Close()
 
-	sh := generator.RandString(8)
+	sh := generator.RandString()
 	row := stmt.QueryRowContext(ctx, sh, url, userID)
 	var res string
 	if err = row.Scan(&res); err != nil {
@@ -55,6 +59,7 @@ func (ds *DBStorage) SaveURL(ctx context.Context, userID string, url string) (st
 	return res, err
 }
 
+// SaveURLBatch saves many URLs to DB and return [[]model.BatchRespEntry] back.
 func (ds *DBStorage) SaveURLBatch(ctx context.Context, userID string,
 	batch []model.BatchReqEntry) ([]model.BatchRespEntry, error) {
 	tx, err := ds.db.BeginTx(ctx, nil)
@@ -75,7 +80,7 @@ func (ds *DBStorage) SaveURLBatch(ctx context.Context, userID string,
 	var bResp []model.BatchRespEntry
 	var sh string
 	for _, b := range batch {
-		sh = generator.RandString(8)
+		sh = generator.RandString()
 		row := stmt.QueryRowContext(ctx, sh, b.OriginalURL, userID)
 		if err := row.Scan(&sh); err != nil {
 			return nil, fmt.Errorf("cannot scan value. %w", err)
@@ -91,6 +96,7 @@ func (ds *DBStorage) SaveURLBatch(ctx context.Context, userID string,
 	return bResp, nil
 }
 
+// FindURL finds original URL in DB by short ID.
 func (ds *DBStorage) FindURL(ctx context.Context, shortURL string) (*OrigURL, error) {
 	stmt, err := ds.db.PrepareContext(ctx, "SELECT original_url, is_deleted "+
 		"FROM courses.shortener sh WHERE sh.short_url = $1")
@@ -109,6 +115,7 @@ func (ds *DBStorage) FindURL(ctx context.Context, shortURL string) (*OrigURL, er
 	return orig, nil
 }
 
+// FindUserURLs finds user's URLs in DB.
 func (ds *DBStorage) FindUserURLs(ctx context.Context, userID string) ([]model.URLPair, error) {
 	stmt, err := ds.db.PrepareContext(ctx, "SELECT short_url, original_url "+
 		"FROM courses.shortener sh WHERE sh.user_id = $1")
@@ -138,10 +145,12 @@ func (ds *DBStorage) FindUserURLs(ctx context.Context, userID string) ([]model.U
 	return res, nil
 }
 
+// Ping pings DB.
 func (ds *DBStorage) Ping(ctx context.Context) error {
 	return ds.db.PingContext(ctx)
 }
 
+// DeleteUserURLs deletes user's URLs.
 func (ds *DBStorage) DeleteUserURLs(ctx context.Context, bde model.BatchDeleteEntry) error {
 	tx, err := ds.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -188,6 +197,7 @@ func (ds *DBStorage) buildDeleteQuery(it model.BatchDeleteEntry, template string
 	return fmt.Sprintf(template, builder.String())
 }
 
+// CreateTables Creates schemas and tables in DB.
 func (ds *DBStorage) CreateTables() error {
 	ddl := `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 	CREATE SCHEMA IF NOT EXISTS courses;
@@ -214,6 +224,7 @@ func (ds *DBStorage) CreateTables() error {
 	return nil
 }
 
+// Close closes connection pool.
 func (ds *DBStorage) Close() error {
 	return ds.db.Close()
 }

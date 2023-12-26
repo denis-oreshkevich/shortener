@@ -22,7 +22,7 @@ func ExampleServer_Get() {
 
 	shortURL, err := s.SaveURL(ctx, userID, "http://localhost:30000")
 	if err != nil {
-		fmt.Errorf("SaveURL : %w", err)
+		fmt.Println(fmt.Errorf("SaveURL : %w", err))
 		return
 	}
 	//Initializing channel to delete URLs

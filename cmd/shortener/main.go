@@ -73,7 +73,7 @@ func run() error {
 	}()
 
 	uh := server.New(conf, sh, delChannel)
-	r := SetUpRouter(conf, uh)
+	r := setUpRouter(conf, uh)
 
 	err := r.Run(fmt.Sprintf("%s:%s", conf.Host(), conf.Port()))
 	if err != nil {
@@ -82,7 +82,7 @@ func run() error {
 	return nil
 }
 
-func SetUpRouter(conf config.Conf, uh *server.Server) *gin.Engine {
+func setUpRouter(conf config.Conf, uh *server.Server) *gin.Engine {
 	r := gin.New()
 	pprof.Register(r)
 

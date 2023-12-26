@@ -30,7 +30,7 @@ func TestPost(t *testing.T) {
 	short := shortener.New(tStorage)
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	uh := server.New(conf, short, delChannel)
-	r := SetUpRouter(conf, uh)
+	r := setUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -93,7 +93,7 @@ func TestGet(t *testing.T) {
 	short := shortener.New(tStorage)
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	uh := server.New(conf, short, delChannel)
-	r := SetUpRouter(conf, uh)
+	r := setUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -158,7 +158,7 @@ func TestShortenPost(t *testing.T) {
 	short := shortener.New(tStorage)
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	uh := server.New(conf, short, delChannel)
-	r := SetUpRouter(conf, uh)
+	r := setUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -236,7 +236,7 @@ func TestShortenBatch(t *testing.T) {
 	short := shortener.New(tStorage)
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	uh := server.New(conf, short, delChannel)
-	r := SetUpRouter(conf, uh)
+	r := setUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -304,7 +304,7 @@ func TestNoRoutes(t *testing.T) {
 	short := shortener.New(tStorage)
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	uh := server.New(conf, short, delChannel)
-	r := SetUpRouter(conf, uh)
+	r := setUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -362,7 +362,7 @@ func TestGetUsersURLs(t *testing.T) {
 	short := shortener.New(tStorage)
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	uh := server.New(conf, short, delChannel)
-	r := SetUpRouter(conf, uh)
+	r := setUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -423,7 +423,7 @@ func TestGzipCompression(t *testing.T) {
 	short := shortener.New(tStorage)
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	uh := server.New(conf, short, delChannel)
-	r := SetUpRouter(conf, uh)
+	r := setUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()

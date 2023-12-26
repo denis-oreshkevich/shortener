@@ -14,12 +14,16 @@ import (
 )
 
 const (
+	// ServerAddressEnvName Server address environment variable name.
 	ServerAddressEnvName = "SERVER_ADDRESS"
 
+	// BaseURLEnvName Base URL environment variable name.
 	BaseURLEnvName = "BASE_URL"
 
+	// FileStoragePath File storage environment variable name.
 	FileStoragePath = "FILE_STORAGE_PATH"
 
+	// DatabaseDSN Database DSN environment variable name.
 	DatabaseDSN = "DATABASE_DSN"
 
 	defaultHost = "localhost"
@@ -31,6 +35,7 @@ const (
 
 var conf Conf
 
+// Get Conf global variable that holds properties from command line and environment variables.
 func Get() Conf {
 	return conf
 }
@@ -41,6 +46,7 @@ type initStructure struct {
 	initFunc func(s string) error
 }
 
+// Parse func parses command line and environment variables and init Conf [config.Conf]
 func Parse() error {
 	conf = Conf{}
 	a := flag.String("a", fmt.Sprintf("%s:%s", defaultHost, defaultPort), "HTTP server address")

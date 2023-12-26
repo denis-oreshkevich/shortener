@@ -16,6 +16,7 @@ func newGzipWriter(w gin.ResponseWriter) *gzipWriter {
 	return &gzipWriter{ResponseWriter: w}
 }
 
+// WriteString method to override [gin.ResponseWriter] interface.
 func (g *gzipWriter) WriteString(s string) (int, error) {
 	if shouldCompress(g) {
 		g.initGzip()
@@ -32,6 +33,7 @@ func (g *gzipWriter) initGzip() {
 	}
 }
 
+// Write method to override [gin.ResponseWriter] interface.
 func (g *gzipWriter) Write(data []byte) (int, error) {
 	if shouldCompress(g) {
 		g.initGzip()
@@ -42,6 +44,7 @@ func (g *gzipWriter) Write(data []byte) (int, error) {
 	return g.ResponseWriter.Write(data)
 }
 
+// WriteHeader method to override [gin.ResponseWriter] interface.
 func (g *gzipWriter) WriteHeader(code int) {
 	g.Header().Del("Content-Length")
 	g.ResponseWriter.WriteHeader(code)
@@ -51,6 +54,9 @@ func shouldCompress(w gin.ResponseWriter) bool {
 	ct := w.Header().Get("Content-Type")
 	return strings.Contains(ct, "application/json") || strings.Contains(ct, "text/html")
 }
+
+// Gzip func to compress HTTP-response if needed.
+// Accept-Encoding header contains gzip and Content-Type is application/json or text/html.
 func Gzip(c *gin.Context) {
 	ceh := c.GetHeader("Content-Encoding")
 	if strings.Contains(ceh, "gzip") {

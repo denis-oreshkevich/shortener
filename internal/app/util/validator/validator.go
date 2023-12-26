@@ -11,10 +11,12 @@ const (
 var urlMatcher = regexp.MustCompile(URLRegex)
 var idMatcher = regexp.MustCompile(IDRegex)
 
+// URL Validates URL.
 func URL(url string) bool {
 	return urlMatcher.MatchString(url)
 }
 
+// ID validates short ID.
 func ID(url string) bool {
 	return idMatcher.MatchString(url)
 }

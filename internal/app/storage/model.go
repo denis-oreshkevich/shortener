@@ -1,5 +1,6 @@
 package storage
 
+// FSModel model that stores in file.
 type FSModel struct {
 	ID          int64  `json:"uuid"`
 	ShortURL    string `json:"short_url"`
@@ -8,6 +9,7 @@ type FSModel struct {
 	DeletedFlag bool   `db:"is_deleted"`
 }
 
+// NewFSModel creates new [FSModel].
 func NewFSModel(id int64, shortURL string,
 	originalURL string, userID string, delFlag bool) *FSModel {
 	return &FSModel{
@@ -19,12 +21,14 @@ func NewFSModel(id int64, shortURL string,
 	}
 }
 
+// OrigURL model.
 type OrigURL struct {
 	OriginalURL string
 	UserID      string
 	DeletedFlag bool
 }
 
+// NewOrigURL creates new [OrigURL].
 func NewOrigURL(originalURL string, userID string, delFlag bool) OrigURL {
 	return OrigURL{
 		OriginalURL: originalURL,
