@@ -57,7 +57,7 @@ func initDatasource(dbDSN string) (*sql.DB, error) {
 			dbErr = fmt.Errorf("pool.Ping: %w", err)
 			return
 		}
-		if err = applyMigration(dbDSN, migration.SQLFiles); err != nil {
+		if err = applyMigration(pool, migration.SQLFiles); err != nil {
 			dbErr = fmt.Errorf("applyMigration: %w", err)
 			return
 		}
@@ -230,15 +230,7 @@ func (ds *DBStorage) buildDeleteQuery(it model.BatchDeleteEntry, template string
 }
 
 // applyMigration patches DB.
-func applyMigration(dsn string, fsys fs.FS) error {
-	//TODO ask about conv between pool
-	//db := stdlib.OpenDBFromPool(db, nil)
-	db, err := sql.Open("pgx", dsn)
-	if err != nil {
-		return fmt.Errorf("sql.Open: %w", err)
-	}
-	defer db.Close()
-
+func applyMigration(db *sql.DB, fsys fs.FS) error {
 	goose.SetBaseFS(fsys)
 	goose.SetSequential(true)
 
