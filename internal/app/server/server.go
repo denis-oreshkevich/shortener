@@ -118,8 +118,7 @@ func (s Server) GetUsersURLs(c *gin.Context) {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	c.Header(ContentType, ApplicationJSON)
-	c.String(http.StatusOK, string(resp))
+	c.Data(http.StatusOK, ApplicationJSON, resp)
 }
 
 func (s Server) ShortenPost(c *gin.Context) {
@@ -201,8 +200,7 @@ func (s Server) ShortenBatch(c *gin.Context) {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	c.Header(ContentType, ApplicationJSON)
-	c.String(http.StatusCreated, string(resp))
+	c.Data(http.StatusCreated, ApplicationJSON, resp)
 }
 
 func (s Server) DeleteURLs(c *gin.Context) {
@@ -253,6 +251,5 @@ func (s Server) sendJSONResultResp(c *gin.Context, id string, status int) {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	c.Header(ContentType, ApplicationJSON)
-	c.String(status, string(resp))
+	c.Data(status, ApplicationJSON, resp)
 }

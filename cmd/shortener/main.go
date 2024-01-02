@@ -9,6 +9,7 @@ import (
 	"github.com/denis-oreshkevich/shortener/internal/app/shortener"
 	"github.com/denis-oreshkevich/shortener/internal/app/storage"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -82,6 +83,7 @@ func run() error {
 
 func SetUpRouter(conf config.Conf, uh *server.Server) *gin.Engine {
 	r := gin.New()
+	pprof.Register(r)
 
 	r.Use(gin.Recovery(), server.JWTAuth, server.Gzip, server.Logging)
 
@@ -93,5 +95,6 @@ func SetUpRouter(conf config.Conf, uh *server.Server) *gin.Engine {
 	r.GET(`/ping`, uh.Ping)
 	r.DELETE(`/api/user/urls`, uh.DeleteURLs)
 	r.NoRoute(uh.NoRoute)
+
 	return r
 }
