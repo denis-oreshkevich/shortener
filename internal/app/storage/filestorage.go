@@ -6,13 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/denis-oreshkevich/shortener/internal/app/model"
-	"github.com/denis-oreshkevich/shortener/internal/app/util/generator"
-	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
 	"io"
 	"os"
 	"sync"
 	"sync/atomic"
+
+	"github.com/denis-oreshkevich/shortener/internal/app/model"
+	"github.com/denis-oreshkevich/shortener/internal/app/util/generator"
+	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
 )
 
 type FileStorage struct {

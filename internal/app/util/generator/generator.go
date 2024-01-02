@@ -1,10 +1,11 @@
 package generator
 
 import (
-	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
-	"github.com/google/uuid"
 	"math/rand"
 	"time"
+
+	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
+	"github.com/google/uuid"
 )
 
 func RandString(length int) string {

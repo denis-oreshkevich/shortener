@@ -3,13 +3,14 @@ package server
 import (
 	"context"
 	"fmt"
+	"net/http"
+
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/auth"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 	"go.uber.org/zap"
-	"net/http"
 )
 
 const (

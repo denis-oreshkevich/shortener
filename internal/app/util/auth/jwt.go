@@ -2,10 +2,11 @@ package auth
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/denis-oreshkevich/shortener/internal/app/util/generator"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
 	"github.com/golang-jwt/jwt/v4"
-	"time"
 )
 
 const (

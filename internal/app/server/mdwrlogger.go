@@ -1,10 +1,11 @@
 package server
 
 import (
+	"time"
+
 	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"time"
 )
 
 func Logging(c *gin.Context) {

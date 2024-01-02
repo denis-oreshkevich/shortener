@@ -2,10 +2,11 @@ package storage
 
 import (
 	"context"
-	"github.com/denis-oreshkevich/shortener/internal/app/util/generator"
-	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
+
+	"github.com/denis-oreshkevich/shortener/internal/app/util/generator"
+	"github.com/stretchr/testify/require"
 )
 
 func BenchmarkStorageSave(b *testing.B) {

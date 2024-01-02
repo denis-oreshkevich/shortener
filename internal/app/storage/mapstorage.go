@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/generator"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
-	"sync"
 )
 
 type MapStorage struct {

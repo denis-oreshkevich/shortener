@@ -5,11 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/generator"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"strconv"
-	"strings"
 )
 
 type DBStorage struct {
