@@ -8,6 +8,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// Logging func to log the request details and it's execution time.
 func Logging(c *gin.Context) {
 	r := c.Request
 	start := time.Now()

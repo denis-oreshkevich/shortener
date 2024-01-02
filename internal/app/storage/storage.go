@@ -7,9 +7,13 @@ import (
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
 )
 
+// ErrPingNotDB error happens when you try to Ping not DB storage.
 var ErrPingNotDB = errors.New("ping not a db storage")
+
+// ErrResultIsDeleted error happens when you try to get deleted URL.
 var ErrResultIsDeleted = errors.New("result is deleted")
 
+// Storage interface for all methods to make communication with repository.
 type Storage interface {
 	SaveURL(ctx context.Context, userID string, url string) (string, error)
 	SaveURLBatch(ctx context.Context, userID string,

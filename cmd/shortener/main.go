@@ -36,16 +36,13 @@ func main() {
 
 func run() error {
 	conf := config.Get()
+	ctx := context.Background()
 
 	var s storage.Storage
 	if conf.DatabaseDSN() != "" {
 		dbStorage, err := storage.NewDBStorage(conf.DatabaseDSN())
 		if err != nil {
 			return fmt.Errorf("initializing db storage %w", err)
-		}
-		err = dbStorage.CreateTables()
-		if err != nil {
-			return fmt.Errorf("create tables %w", err)
 		}
 		defer dbStorage.Close()
 		s = dbStorage
@@ -63,7 +60,7 @@ func run() error {
 		s = mapStorage
 		logger.Log.Info("using mapStorage as storage")
 	}
-	ctx := context.Background()
+
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	sh := shortener.New(s)
 
@@ -73,7 +70,7 @@ func run() error {
 	}()
 
 	uh := server.New(conf, sh, delChannel)
-	r := SetUpRouter(conf, uh)
+	r := setUpRouter(conf, uh)
 
 	err := r.Run(fmt.Sprintf("%s:%s", conf.Host(), conf.Port()))
 	if err != nil {
@@ -82,7 +79,7 @@ func run() error {
 	return nil
 }
 
-func SetUpRouter(conf config.Conf, uh *server.Server) *gin.Engine {
+func setUpRouter(conf config.Conf, uh *server.Server) *gin.Engine {
 	r := gin.New()
 	pprof.Register(r)
 

@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/denis-oreshkevich/shortener/internal/app/util/generator"
+
 	"github.com/denis-oreshkevich/shortener/internal/app/config"
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/denis-oreshkevich/shortener/internal/app/server"
@@ -28,7 +30,7 @@ func TestPost(t *testing.T) {
 	short := shortener.New(tStorage)
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	uh := server.New(conf, short, delChannel)
-	r := SetUpRouter(conf, uh)
+	r := setUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -91,7 +93,7 @@ func TestGet(t *testing.T) {
 	short := shortener.New(tStorage)
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	uh := server.New(conf, short, delChannel)
-	r := SetUpRouter(conf, uh)
+	r := setUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -156,7 +158,7 @@ func TestShortenPost(t *testing.T) {
 	short := shortener.New(tStorage)
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	uh := server.New(conf, short, delChannel)
-	r := SetUpRouter(conf, uh)
+	r := setUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -234,7 +236,7 @@ func TestShortenBatch(t *testing.T) {
 	short := shortener.New(tStorage)
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	uh := server.New(conf, short, delChannel)
-	r := SetUpRouter(conf, uh)
+	r := setUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -302,7 +304,7 @@ func TestNoRoutes(t *testing.T) {
 	short := shortener.New(tStorage)
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	uh := server.New(conf, short, delChannel)
-	r := SetUpRouter(conf, uh)
+	r := setUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
@@ -354,6 +356,65 @@ func TestNoRoutes(t *testing.T) {
 	RunSubTests(t, tests, tSrv)
 }
 
+func TestGetUsersURLs(t *testing.T) {
+	conf := config.Get()
+	tStorage := new(mockedStorage)
+	short := shortener.New(tStorage)
+	delChannel := make(chan model.BatchDeleteEntry, 3)
+	uh := server.New(conf, short, delChannel)
+	r := setUpRouter(conf, uh)
+
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+	tSrv := newTestConf(srv, tStorage)
+
+	model.NewURLPair(generator.UUIDString(), "http://localhost:8080/den")
+
+	pairs := []model.URLPair{
+		model.NewURLPair(generator.UUIDString(), "http://localhost:8080/den"),
+		model.NewURLPair(generator.UUIDString(), "http://localhost:8080/denis"),
+	}
+
+	tests := []test{
+		{
+			name:   "simple test get user's URL #1",
+			isMock: true,
+			mockOn: func(m *mockedStorage) *mock.Call {
+				return m.On("FindUserURLs", mock.Anything, mock.Anything,
+					mock.Anything).Return(pairs, nil)
+			},
+			reqFunc: func() *http.Request {
+				req := httptest.NewRequest("GET", tSrv.URL+conf.
+					BasePath()+"/api/user/urls", nil)
+				req.RequestURI = ""
+				return req
+			},
+			want: want{
+				contentType: server.ApplicationJSON,
+				statusCode:  200,
+			},
+		},
+		{
+			name:   "empty result get user's URL #2",
+			isMock: true,
+			mockOn: func(m *mockedStorage) *mock.Call {
+				return m.On("FindUserURLs", mock.Anything, mock.Anything,
+					mock.Anything).Return(pairs, shortener.ErrUserItemsNotFound)
+			},
+			reqFunc: func() *http.Request {
+				body := strings.NewReader("https://practicum.yandex.ru/")
+				req := httptest.NewRequest("GET", tSrv.URL+"/api/user/urls", body)
+				req.RequestURI = ""
+				return req
+			},
+			want: want{
+				statusCode: 204,
+			},
+		},
+	}
+	RunSubTests(t, tests, tSrv)
+}
+
 func TestGzipCompression(t *testing.T) {
 	conf := config.Get()
 	tStorage := new(mockedStorage)
@@ -362,7 +423,7 @@ func TestGzipCompression(t *testing.T) {
 	short := shortener.New(tStorage)
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	uh := server.New(conf, short, delChannel)
-	r := SetUpRouter(conf, uh)
+	r := setUpRouter(conf, uh)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()

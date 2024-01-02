@@ -5,32 +5,68 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io/fs"
 	"strconv"
 	"strings"
+	"sync"
+
+	"github.com/denis-oreshkevich/shortener/migration"
 
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/generator"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
 )
 
+// DBStorage database storage.
 type DBStorage struct {
 	db *sql.DB
 }
 
 var _ Storage = (*DBStorage)(nil)
 
+var (
+	db     *sql.DB
+	pgOnce sync.Once
+
+	dbErr error
+)
+
+// ErrDBConflict error happens on DB conflict.
 var ErrDBConflict = errors.New("db conflict while executing sql query")
 
+// NewDBStorage creates new [*DBStorage].
 func NewDBStorage(dbDSN string) (*DBStorage, error) {
-	db, err := sql.Open("pgx", dbDSN)
+	pool, err := initDatasource(dbDSN)
 	if err != nil {
-		return nil, fmt.Errorf("NewDBStorage, Open %w", err)
+		return nil, fmt.Errorf("initPool: %w", err)
 	}
 	return &DBStorage{
-		db: db,
+		db: pool,
 	}, nil
 }
 
+func initDatasource(dbDSN string) (*sql.DB, error) {
+	pgOnce.Do(func() {
+		pool, err := sql.Open("pgx", dbDSN)
+		if err != nil {
+			dbErr = fmt.Errorf("pgxpool.New: %w", err)
+			return
+		}
+		if err = pool.Ping(); err != nil {
+			dbErr = fmt.Errorf("pool.Ping: %w", err)
+			return
+		}
+		if err = applyMigration(pool, migration.SQLFiles); err != nil {
+			dbErr = fmt.Errorf("applyMigration: %w", err)
+			return
+		}
+		db = pool
+	})
+	return db, dbErr
+}
+
+// SaveURL saves original URL to DB and returns short URL.
 func (ds *DBStorage) SaveURL(ctx context.Context, userID string, url string) (string, error) {
 	stmt, err := ds.db.PrepareContext(ctx, "WITH new_row AS ("+
 		"INSERT INTO courses.shortener(short_url, original_url, user_id) VALUES ($1, $2, $3) "+
@@ -42,7 +78,7 @@ func (ds *DBStorage) SaveURL(ctx context.Context, userID string, url string) (st
 	}
 	defer stmt.Close()
 
-	sh := generator.RandString(8)
+	sh := generator.RandString()
 	row := stmt.QueryRowContext(ctx, sh, url, userID)
 	var res string
 	if err = row.Scan(&res); err != nil {
@@ -55,6 +91,7 @@ func (ds *DBStorage) SaveURL(ctx context.Context, userID string, url string) (st
 	return res, err
 }
 
+// SaveURLBatch saves many URLs to DB and return [[]model.BatchRespEntry] back.
 func (ds *DBStorage) SaveURLBatch(ctx context.Context, userID string,
 	batch []model.BatchReqEntry) ([]model.BatchRespEntry, error) {
 	tx, err := ds.db.BeginTx(ctx, nil)
@@ -75,7 +112,7 @@ func (ds *DBStorage) SaveURLBatch(ctx context.Context, userID string,
 	var bResp []model.BatchRespEntry
 	var sh string
 	for _, b := range batch {
-		sh = generator.RandString(8)
+		sh = generator.RandString()
 		row := stmt.QueryRowContext(ctx, sh, b.OriginalURL, userID)
 		if err := row.Scan(&sh); err != nil {
 			return nil, fmt.Errorf("cannot scan value. %w", err)
@@ -91,6 +128,7 @@ func (ds *DBStorage) SaveURLBatch(ctx context.Context, userID string,
 	return bResp, nil
 }
 
+// FindURL finds original URL in DB by short ID.
 func (ds *DBStorage) FindURL(ctx context.Context, shortURL string) (*OrigURL, error) {
 	stmt, err := ds.db.PrepareContext(ctx, "SELECT original_url, is_deleted "+
 		"FROM courses.shortener sh WHERE sh.short_url = $1")
@@ -109,6 +147,7 @@ func (ds *DBStorage) FindURL(ctx context.Context, shortURL string) (*OrigURL, er
 	return orig, nil
 }
 
+// FindUserURLs finds user's URLs in DB.
 func (ds *DBStorage) FindUserURLs(ctx context.Context, userID string) ([]model.URLPair, error) {
 	stmt, err := ds.db.PrepareContext(ctx, "SELECT short_url, original_url "+
 		"FROM courses.shortener sh WHERE sh.user_id = $1")
@@ -138,10 +177,12 @@ func (ds *DBStorage) FindUserURLs(ctx context.Context, userID string) ([]model.U
 	return res, nil
 }
 
+// Ping pings DB.
 func (ds *DBStorage) Ping(ctx context.Context) error {
 	return ds.db.PingContext(ctx)
 }
 
+// DeleteUserURLs deletes user's URLs.
 func (ds *DBStorage) DeleteUserURLs(ctx context.Context, bde model.BatchDeleteEntry) error {
 	tx, err := ds.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -188,32 +229,21 @@ func (ds *DBStorage) buildDeleteQuery(it model.BatchDeleteEntry, template string
 	return fmt.Sprintf(template, builder.String())
 }
 
-func (ds *DBStorage) CreateTables() error {
-	ddl := `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-	CREATE SCHEMA IF NOT EXISTS courses;
-	CREATE TABLE IF NOT EXISTS courses.shortener();
-	ALTER TABLE courses.shortener ADD COLUMN IF NOT EXISTS id uuid PRIMARY KEY DEFAULT uuid_generate_v4();
-	ALTER TABLE courses.shortener ADD COLUMN IF NOT EXISTS short_url varchar(8) UNIQUE NOT NULL;
-	ALTER TABLE courses.shortener ADD COLUMN IF NOT EXISTS original_url varchar UNIQUE NOT NULL;
-	ALTER TABLE courses.shortener ADD COLUMN IF NOT EXISTS user_id uuid NOT NULL;
-	ALTER TABLE courses.shortener ADD COLUMN IF NOT EXISTS is_deleted boolean NOT NULL default false;`
+// applyMigration patches DB.
+func applyMigration(db *sql.DB, fsys fs.FS) error {
+	goose.SetBaseFS(fsys)
+	goose.SetSequential(true)
 
-	tx, err := ds.db.Begin()
-	if err != nil {
-		return fmt.Errorf("tx begin. %w", err)
+	if err := goose.SetDialect("postgres"); err != nil {
+		return fmt.Errorf("goose.SetDialect: %w", err)
 	}
-	_, err = tx.Exec(ddl)
-	if err != nil {
-		tx.Rollback()
-		return fmt.Errorf("execute ddl. %w", err)
-	}
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("tx commit. %w", err)
+	if err := goose.Up(db, "."); err != nil {
+		return fmt.Errorf("goose.Up: %w", err)
 	}
 	return nil
 }
 
+// Close closes connection pool.
 func (ds *DBStorage) Close() error {
 	return ds.db.Close()
 }

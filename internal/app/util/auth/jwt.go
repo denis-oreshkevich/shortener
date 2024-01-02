@@ -9,11 +9,13 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
+// Constants for JWT generation.
 const (
 	SecretKey = "MegaSecretKey"
 	TokenExp  = time.Hour * 5
 )
 
+// GenerateToken generates new JWT.
 func GenerateToken() (string, error) {
 	id := generator.UUIDString()
 	logger.Log.Debug(fmt.Sprintf("creating new token for sub = %s", id))

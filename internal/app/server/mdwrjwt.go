@@ -13,10 +13,11 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	UserCookieName = `SESSION`
-)
+// UserCookieName cookie name for JWT.
+const UserCookieName = `SESSION`
 
+// JWTAuth func to check user's authentication.
+// If user is not authenticated this func will authenticate it.
 func JWTAuth(c *gin.Context) {
 	log := logger.Log.With(zap.String("cat", "auth"))
 	ctx := c.Request.Context()

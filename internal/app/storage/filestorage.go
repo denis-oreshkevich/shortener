@@ -16,6 +16,7 @@ import (
 	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
 )
 
+// FileStorage file storage.
 type FileStorage struct {
 	filename string
 	mx       sync.RWMutex
@@ -27,6 +28,7 @@ type FileStorage struct {
 
 var _ Storage = (*FileStorage)(nil)
 
+// NewFileStorage creates new [*FileStorage].
 func NewFileStorage(filename string) (*FileStorage, error) {
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -62,9 +64,10 @@ func NewFileStorage(filename string) (*FileStorage, error) {
 	}, nil
 }
 
+// SaveURL saves original URL to file and map and returns short URL.
 func (fs *FileStorage) SaveURL(ctx context.Context, userID string, url string) (string, error) {
 	id := atomic.AddInt64(&fs.inc, 1)
-	shURL := generator.RandString(8)
+	shURL := generator.RandString()
 	shorten := NewFSModel(id, shURL, url, userID, false)
 	marsh, err := json.Marshal(shorten)
 	if err != nil {
@@ -88,6 +91,7 @@ func (fs *FileStorage) SaveURL(ctx context.Context, userID string, url string) (
 	return shURL, nil
 }
 
+// SaveURLBatch saves many URLs to file and map and return [[]model.BatchRespEntry] back.
 func (fs *FileStorage) SaveURLBatch(ctx context.Context, userID string,
 	batch []model.BatchReqEntry) ([]model.BatchRespEntry, error) {
 	var bResp []model.BatchRespEntry
@@ -95,7 +99,7 @@ func (fs *FileStorage) SaveURLBatch(ctx context.Context, userID string,
 	defer fs.mx.Unlock()
 	for _, b := range batch {
 		id := atomic.AddInt64(&fs.inc, 1)
-		shURL := generator.RandString(8)
+		shURL := generator.RandString()
 		shorten := NewFSModel(id, shURL, b.OriginalURL, userID, false)
 		marsh, err := json.Marshal(shorten)
 		if err != nil {
@@ -118,14 +122,17 @@ func (fs *FileStorage) SaveURLBatch(ctx context.Context, userID string,
 	return bResp, nil
 }
 
+// FindURL finds original URL in file and map by short ID.
 func (fs *FileStorage) FindURL(ctx context.Context, id string) (*OrigURL, error) {
 	return fs.cache.FindURL(ctx, id)
 }
 
+// FindUserURLs finds user's URLs in file and map.
 func (fs *FileStorage) FindUserURLs(ctx context.Context, userID string) ([]model.URLPair, error) {
 	return fs.cache.FindUserURLs(ctx, userID)
 }
 
+// DeleteUserURLs deletes user's URLs.
 func (fs *FileStorage) DeleteUserURLs(ctx context.Context, bde model.BatchDeleteEntry) error {
 	fs.mx.Lock()
 	defer fs.mx.Unlock()
@@ -207,10 +214,12 @@ func (fs *FileStorage) writeContentToCacheAndFile(content map[string]*FSModel) e
 	return nil
 }
 
+// Ping Returns an error.
 func (fs *FileStorage) Ping(ctx context.Context) error {
 	return ErrPingNotDB
 }
 
+// Close closes file.
 func (fs *FileStorage) Close() error {
 	return fs.file.Close()
 }

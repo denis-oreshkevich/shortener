@@ -11,6 +11,7 @@ import (
 	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
 )
 
+// MapStorage map based storage.
 type MapStorage struct {
 	mx sync.RWMutex
 	//map userId = slice of URL IDs
@@ -20,6 +21,7 @@ type MapStorage struct {
 
 var _ Storage = (*MapStorage)(nil)
 
+// NewMapStorage creates new [*MapStorage].
 func NewMapStorage() *MapStorage {
 	return &MapStorage{
 		userURLs: make(map[string][]string),
@@ -27,27 +29,30 @@ func NewMapStorage() *MapStorage {
 	}
 }
 
+// SaveURL saves original URL to maps and returns short URL.
 func (ms *MapStorage) SaveURL(ctx context.Context, userID string, url string) (string, error) {
-	id := generator.RandString(8)
+	id := generator.RandString()
 	ms.mx.Lock()
 	defer ms.mx.Unlock()
 	ms.saveURLNotSync(id, NewOrigURL(url, userID, false))
 	return id, nil
 }
 
+// SaveURLBatch saves many URLs to maps and return [[]model.BatchRespEntry] back.
 func (ms *MapStorage) SaveURLBatch(ctx context.Context, userID string,
 	batch []model.BatchReqEntry) ([]model.BatchRespEntry, error) {
 	ms.mx.Lock()
 	defer ms.mx.Unlock()
 	var bResp []model.BatchRespEntry
 	for _, b := range batch {
-		sh := generator.RandString(8)
+		sh := generator.RandString()
 		ms.saveURLNotSync(sh, NewOrigURL(b.OriginalURL, userID, false))
 		bResp = append(bResp, model.NewBatchRespEntry(b.CorrelationID, sh))
 	}
 	return bResp, nil
 }
 
+// FindURL finds original URL in map by short ID.
 func (ms *MapStorage) FindURL(ctx context.Context, id string) (*OrigURL, error) {
 	ms.mx.RLock()
 	defer ms.mx.RUnlock()
@@ -62,6 +67,7 @@ func (ms *MapStorage) FindURL(ctx context.Context, id string) (*OrigURL, error) 
 	return &val, nil
 }
 
+// FindUserURLs finds user's URLs in map.
 func (ms *MapStorage) FindUserURLs(ctx context.Context, userID string) ([]model.URLPair, error) {
 	ms.mx.RLock()
 	defer ms.mx.RUnlock()
@@ -82,6 +88,7 @@ func (ms *MapStorage) FindUserURLs(ctx context.Context, userID string) ([]model.
 	return res, nil
 }
 
+// DeleteUserURLs deletes user's URLs.
 func (ms *MapStorage) DeleteUserURLs(ctx context.Context, bde model.BatchDeleteEntry) error {
 	ms.mx.Lock()
 	defer ms.mx.Unlock()
@@ -117,6 +124,7 @@ func (ms *MapStorage) deleteUserURLsNotSync(ctx context.Context,
 	return nil
 }
 
+// Ping returns an error.
 func (ms *MapStorage) Ping(ctx context.Context) error {
 	return ErrPingNotDB
 }
