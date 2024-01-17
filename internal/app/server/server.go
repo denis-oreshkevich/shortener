@@ -198,7 +198,7 @@ func (s Server) ShortenBatch(c *gin.Context) {
 		return
 	}
 	var batch []model.BatchReqEntry
-	if errUn := json.Unmarshal(body, &batch); err != nil {
+	if errUn := json.Unmarshal(body, &batch); errUn != nil {
 		logger.Log.Error("unmarshal", zap.Error(errUn))
 		c.String(http.StatusBadRequest, "Ошибка при десериализации из json")
 		return
