@@ -114,8 +114,8 @@ func (ds *DBStorage) SaveURLBatch(ctx context.Context, userID string,
 	for _, b := range batch {
 		sh = generator.RandString()
 		row := stmt.QueryRowContext(ctx, sh, b.OriginalURL, userID)
-		if err := row.Scan(&sh); err != nil {
-			return nil, fmt.Errorf("cannot scan value. %w", err)
+		if errScan := row.Scan(&sh); errScan != nil {
+			return nil, fmt.Errorf("cannot scan value. %w", errScan)
 		}
 		var resp = model.NewBatchRespEntry(b.CorrelationID, sh)
 		bResp = append(bResp, resp)
@@ -164,8 +164,8 @@ func (ds *DBStorage) FindUserURLs(ctx context.Context, userID string) ([]model.U
 	for rows.Next() {
 		var sh string
 		var orig string
-		if err := rows.Scan(&sh, &orig); err != nil {
-			return nil, fmt.Errorf("cannot scan value. %w", err)
+		if errScan := rows.Scan(&sh, &orig); errScan != nil {
+			return nil, fmt.Errorf("cannot scan value. %w", errScan)
 		}
 		p := model.NewURLPair(sh, orig)
 		res = append(res, p)
@@ -196,8 +196,8 @@ func (ds *DBStorage) DeleteUserURLs(ctx context.Context, bde model.BatchDeleteEn
 	q := ds.buildDeleteQuery(bde, template)
 	iDs := buildIDs(bde)
 
-	if _, err := tx.ExecContext(ctx, q, iDs...); err != nil {
-		errs = append(errs, err)
+	if _, errEx := tx.ExecContext(ctx, q, iDs...); errEx != nil {
+		errs = append(errs, errEx)
 	}
 
 	err = tx.Commit()

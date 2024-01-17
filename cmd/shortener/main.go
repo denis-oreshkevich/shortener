@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-
 	"github.com/denis-oreshkevich/shortener/internal/app/config"
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/denis-oreshkevich/shortener/internal/app/server"
@@ -15,15 +13,16 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"log"
 )
 
 func main() {
 	err := logger.Initialize(zapcore.DebugLevel.String())
-	defer logger.Log.Sync()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "logger initialize", err)
-		os.Exit(1)
+		log.Fatal("logger.Initialize", err)
 	}
+	defer logger.Log.Sync()
+
 	err = config.Parse()
 	if err != nil {
 		logger.Log.Fatal("parse config", zap.Error(err))

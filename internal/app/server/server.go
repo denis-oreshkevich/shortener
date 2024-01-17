@@ -145,8 +145,8 @@ func (s Server) ShortenPost(c *gin.Context) {
 		return
 	}
 	var um URLModel
-	if err := json.Unmarshal(body, &um); err != nil {
-		logger.Log.Error("unmarshal", zap.Error(err))
+	if errUn := json.Unmarshal(body, &um); errUn != nil {
+		logger.Log.Error("unmarshal", zap.Error(errUn))
 		c.String(http.StatusBadRequest, "Ошибка при десериализации из json")
 		return
 	}
@@ -198,8 +198,8 @@ func (s Server) ShortenBatch(c *gin.Context) {
 		return
 	}
 	var batch []model.BatchReqEntry
-	if err := json.Unmarshal(body, &batch); err != nil {
-		logger.Log.Error("unmarshal", zap.Error(err))
+	if errUn := json.Unmarshal(body, &batch); err != nil {
+		logger.Log.Error("unmarshal", zap.Error(errUn))
 		c.String(http.StatusBadRequest, "Ошибка при десериализации из json")
 		return
 	}
