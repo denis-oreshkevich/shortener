@@ -16,12 +16,22 @@ import (
 	"log"
 )
 
+var buildVersion = "N/A"
+
+var buildDate = "N/A"
+
+var buildCommit = "N/A"
+
 func main() {
 	err := logger.Initialize(zapcore.DebugLevel.String())
 	if err != nil {
 		log.Fatal("logger.Initialize", err)
 	}
 	defer logger.Log.Sync()
+
+	logger.Log.Info(fmt.Sprintf("Build version: %s\n", buildVersion))
+	logger.Log.Info(fmt.Sprintf("Build date: %s\n", buildDate))
+	logger.Log.Info(fmt.Sprintf("Build commit: %s\n", buildCommit))
 
 	err = config.Parse()
 	if err != nil {
