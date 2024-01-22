@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 func main() {
-	// want
+	fmt.Printf("%s", "A") // want
 }
