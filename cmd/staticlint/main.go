@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/denis-oreshkevich/shortener/cmd/staticlint/osexit"
+	"github.com/denis-oreshkevich/shortener/pkg/osexit"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/multichecker"
 	"golang.org/x/tools/go/analysis/passes/defers"
