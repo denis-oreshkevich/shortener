@@ -15,7 +15,6 @@ var Analyzer = &analysis.Analyzer{
 
 // run runs the analyzer
 func run(pass *analysis.Pass) (interface{}, error) {
-	var success bool = true
 	for _, file := range pass.Files {
 		if file.Name.Name == "main" {
 			ast.Inspect(file, func(node ast.Node) bool {
@@ -29,13 +28,12 @@ func run(pass *analysis.Pass) (interface{}, error) {
 						if ident, ok := selexpr.X.(*ast.Ident); ok {
 							if ident.Name == "os" && selexpr.Sel.Name == "Exit" {
 								pass.Reportf(ident.NamePos, "calling os.Exit in main package main func")
-								success = false
 							}
 						}
 					}
 				}
 
-				return success
+				return true
 			})
 		}
 	}
