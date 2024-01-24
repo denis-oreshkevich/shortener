@@ -9,6 +9,7 @@ type Conf struct {
 	basePath    string
 	fsPath      string
 	databaseDSN string
+	enableHTTPS bool
 }
 
 // Scheme getter for field scheme.
@@ -44,4 +45,9 @@ func (s Conf) FsPath() string {
 // DatabaseDSN getter for field databaseDSN.
 func (s Conf) DatabaseDSN() string {
 	return s.databaseDSN
+}
+
+// EnableHTTPS getter for field enableHTTPS.
+func (s Conf) EnableHTTPS() bool {
+	return s.enableHTTPS
 }

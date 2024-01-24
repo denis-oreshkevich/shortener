@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
@@ -24,8 +25,9 @@ const (
 	// FileStoragePath File storage environment variable name.
 	FileStoragePath = "FILE_STORAGE_PATH"
 
-	// DatabaseDSN Database DSN environment variable name.
-	DatabaseDSN = "DATABASE_DSN"
+	databaseDSN = "DATABASE_DSN"
+
+	enableHTTPS = "ENABLE_HTTPS"
 
 	defaultHost = "localhost"
 
@@ -56,6 +58,7 @@ func Parse() error {
 	f := flag.String("f", "", "Path to storage file")
 	//host=localhost port=5433 user=postgres password=postgres dbname=courses sslmode=disable
 	d := flag.String("d", "", "Database connection")
+	s := flag.String("s", "true", "Enables HTTPS")
 	flag.Parse()
 
 	isa := initStructure{
@@ -94,7 +97,7 @@ func Parse() error {
 	}
 
 	idb := initStructure{
-		envName: DatabaseDSN,
+		envName: databaseDSN,
 		argVal:  *d,
 		initFunc: func(s string) error {
 			conf.databaseDSN = s
@@ -102,6 +105,23 @@ func Parse() error {
 		},
 	}
 	err = initAppParam(idb)
+	if err != nil {
+		return err
+	}
+
+	ieh := initStructure{
+		envName: enableHTTPS,
+		argVal:  *s,
+		initFunc: func(s string) error {
+			boolValue, boolErr := strconv.ParseBool(s)
+			if boolErr != nil {
+				return fmt.Errorf("strconv.ParseBool: %w", err)
+			}
+			conf.enableHTTPS = boolValue
+			return nil
+		},
+	}
+	err = initAppParam(ieh)
 	if err != nil {
 		return err
 	}
