@@ -14,11 +14,13 @@ import (
 	"time"
 )
 
+// CertManager holds paths to cert and key
 type CertManager struct {
 	CertPath string
 	KeyPath  string
 }
 
+// NewCertManager creates new CertManager
 func NewCertManager(certPath, keyPath string) (*CertManager, error) {
 	// создаём шаблон сертификата
 	cert := &x509.Certificate{
