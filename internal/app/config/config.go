@@ -58,7 +58,7 @@ func Parse() error {
 	f := flag.String("f", "", "Path to storage file")
 	//host=localhost port=5433 user=postgres password=postgres dbname=courses sslmode=disable
 	d := flag.String("d", "", "Database connection")
-	s := flag.String("s", "true", "Enables HTTPS")
+	s := flag.String("s", "false", "Enables HTTPS")
 	flag.Parse()
 
 	isa := initStructure{
