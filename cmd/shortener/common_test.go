@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var IDURLRegex = regexp.MustCompile(config.Get().BaseURL + "/[A-Za-z0-9]{8}$")
+var IDURLRegex = regexp.MustCompile(config.Get().BaseURL() + "/[A-Za-z0-9]{8}$")
 
 type mockedStorage struct {
 	mock.Mock
@@ -121,7 +121,7 @@ func createHTTPAuthClient(t *testing.T, srv *httptest.Server) *http.Client {
 		Name:   server.UserCookieName,
 		Value:  token,
 		Path:   "",
-		Domain: config.Get().ServerAddress,
+		Domain: config.Get().Host(),
 	}
 	c := make([]*http.Cookie, 1)
 	c[0] = cookie

@@ -53,7 +53,7 @@ func TestPost(t *testing.T) {
 			want: want{
 				contentType: server.TextPlain,
 				statusCode:  201,
-				body:        conf.BaseURL + "/" + "CCCCCCCC",
+				body:        conf.BaseURL() + "/" + "CCCCCCCC",
 			},
 		},
 		{
@@ -109,7 +109,7 @@ func TestGet(t *testing.T) {
 					&origURL, nil)
 			},
 			reqFunc: func() *http.Request {
-				req := httptest.NewRequest("GET", srv.URL+conf.BasePath+"/AAAAAAAA", nil)
+				req := httptest.NewRequest("GET", srv.URL+conf.BasePath()+"/AAAAAAAA", nil)
 				req.RequestURI = ""
 				return req
 			},
@@ -123,7 +123,7 @@ func TestGet(t *testing.T) {
 			name:   "bad id Get test #2",
 			isMock: false,
 			reqFunc: func() *http.Request {
-				req := httptest.NewRequest("GET", srv.URL+conf.BasePath+"/HHH", nil)
+				req := httptest.NewRequest("GET", srv.URL+conf.BasePath()+"/HHH", nil)
 				req.RequestURI = ""
 				return req
 			},
@@ -139,7 +139,7 @@ func TestGet(t *testing.T) {
 				return m.On("FindURL", mock.Anything, "HHHHHHHH").Return(&storage.OrigURL{}, errors.New("test error"))
 			},
 			reqFunc: func() *http.Request {
-				req := httptest.NewRequest("GET", srv.URL+conf.BasePath+"/HHHHHHHH", nil)
+				req := httptest.NewRequest("GET", srv.URL+conf.BasePath()+"/HHHHHHHH", nil)
 				req.RequestURI = ""
 				return req
 			},
@@ -164,7 +164,7 @@ func TestShortenPost(t *testing.T) {
 	defer srv.Close()
 	tSrv := newTestConf(srv, tStorage)
 
-	res, err := json.Marshal(server.NewResult(conf.BaseURL + "/" + "EEEEEEEE"))
+	res, err := json.Marshal(server.NewResult(conf.BaseURL() + "/" + "EEEEEEEE"))
 	if err != nil {
 		logger.Log.Error("marshal json", zap.Error(err))
 	}
@@ -243,8 +243,8 @@ func TestShortenBatch(t *testing.T) {
 	tSrv := newTestConf(srv, tStorage)
 
 	bResp := make([]model.BatchRespEntry, 2)
-	b0 := model.NewBatchRespEntry("123", conf.BaseURL+"/"+"EEEEEEEE")
-	b1 := model.NewBatchRespEntry("321", conf.BaseURL+"/"+"JJJJJJJJ")
+	b0 := model.NewBatchRespEntry("123", conf.BaseURL()+"/"+"EEEEEEEE")
+	b1 := model.NewBatchRespEntry("321", conf.BaseURL()+"/"+"JJJJJJJJ")
 	bResp[0] = b0
 	bResp[1] = b1
 	exp, err := json.Marshal(bResp)
@@ -315,7 +315,7 @@ func TestNoRoutes(t *testing.T) {
 			name:   "bad url Get test '/test/AAAAAAAA' #1",
 			isMock: false,
 			reqFunc: func() *http.Request {
-				req := httptest.NewRequest("GET", tSrv.URL+conf.BasePath+"/test/AAAAAAAA", nil)
+				req := httptest.NewRequest("GET", tSrv.URL+conf.BasePath()+"/test/AAAAAAAA", nil)
 				req.RequestURI = ""
 				return req
 			},
@@ -385,7 +385,7 @@ func TestGetUsersURLs(t *testing.T) {
 			},
 			reqFunc: func() *http.Request {
 				req := httptest.NewRequest("GET", tSrv.URL+conf.
-					BasePath+"/api/user/urls", nil)
+					BasePath()+"/api/user/urls", nil)
 				req.RequestURI = ""
 				return req
 			},
@@ -433,7 +433,7 @@ func TestGzipCompression(t *testing.T) {
 	}`
 
 	successBody := `{
-        "result":"` + conf.BaseURL + "/MMMMMMMM" + `"
+        "result":"` + conf.BaseURL() + "/MMMMMMMM" + `"
 	}`
 	client := createHTTPAuthClient(t, srv)
 	t.Run("sends_gzip_json", func(t *testing.T) {

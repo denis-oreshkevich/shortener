@@ -62,7 +62,7 @@ func (s Server) Post(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, storage.ErrDBConflict) {
 			logger.Log.Info(fmt.Sprintf("saveURL conflict on original url = %s", bodyURL))
-			url := fmt.Sprintf("%s/%s", s.conf.BaseURL, id)
+			url := fmt.Sprintf("%s/%s", s.conf.BaseURL(), id)
 			c.String(http.StatusConflict, url)
 			return
 		}
@@ -70,7 +70,7 @@ func (s Server) Post(c *gin.Context) {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	url := fmt.Sprintf("%s/%s", s.conf.BaseURL, id)
+	url := fmt.Sprintf("%s/%s", s.conf.BaseURL(), id)
 	c.String(http.StatusCreated, url)
 }
 
@@ -266,7 +266,7 @@ func (s Server) DeleteURLs(c *gin.Context) {
 }
 
 func (s Server) sendJSONResultResp(c *gin.Context, id string, status int) {
-	url := fmt.Sprintf("%s/%s", s.conf.BaseURL, id)
+	url := fmt.Sprintf("%s/%s", s.conf.BaseURL(), id)
 	resp, err := json.Marshal(NewResult(url))
 	if err != nil {
 		logger.Log.Error("buildJSONResp", zap.Error(err))
