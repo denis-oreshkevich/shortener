@@ -32,16 +32,31 @@ func Parse() error {
 		return fmt.Errorf("json.Unmarshal: %w", err)
 	}
 
-	flag.StringVar(&conf.ServerAddress, "a", "", "HTTP server address")
+	a := flag.String("a", "", "HTTP server address")
+	if len(*a) != 0 {
+		conf.ServerAddress = *a
+	}
 
-	flag.StringVar(&conf.BaseURL, "b", "", "HTTP server base URL")
+	b := flag.String("b", "", "HTTP server base URL")
+	if len(*b) != 0 {
+		conf.BaseURL = *b
+	}
 
-	flag.StringVar(&conf.FsPath, "f", "", "Path to file storage")
+	f := flag.String("f", "", "Path to file storage")
+	if len(*f) != 0 {
+		conf.FsPath = *f
+	}
 
 	//host=localhost port=5433 user=postgres password=postgres dbname=courses sslmode=disable
-	flag.StringVar(&conf.DatabaseDSN, "d", "", "Data Source Name (DSN)")
+	d := flag.String("d", "", "Data Source Name (DSN)")
+	if len(*d) != 0 {
+		conf.DatabaseDSN = *d
+	}
 
-	flag.BoolVar(&conf.EnableHTTPS, "s", false, "Enables HTTPS")
+	s := flag.Bool("s", false, "Enables HTTPS")
+	if !*s {
+		conf.EnableHTTPS = *s
+	}
 
 	flag.Parse()
 
