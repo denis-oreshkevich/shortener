@@ -23,6 +23,9 @@ func Parse() error {
 		"Path to config JSON file")
 
 	file, err := os.ReadFile(conf.ConfFilePath)
+	if err != nil {
+		return fmt.Errorf("os.ReadFile: %w", err)
+	}
 
 	err = json.Unmarshal(file, &conf)
 	if err != nil {
