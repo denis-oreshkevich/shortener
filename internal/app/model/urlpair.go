@@ -14,7 +14,7 @@ type URLPair struct {
 
 // NewURLPair creates new [URLPair].
 func NewURLPair(id, originalURL string) URLPair {
-	baseURL := config.Get().BaseURL()
+	baseURL := config.Get().BaseURL
 	return URLPair{
 		ShortURL:    fmt.Sprintf("%s/%s", baseURL, id),
 		OriginalURL: originalURL,

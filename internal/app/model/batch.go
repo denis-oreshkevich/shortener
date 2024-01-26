@@ -28,7 +28,7 @@ type BatchRespEntry struct {
 
 // NewBatchRespEntry creates new [BatchRespEntry].
 func NewBatchRespEntry(corID string, id string) BatchRespEntry {
-	baseURL := config.Get().BaseURL()
+	baseURL := config.Get().BaseURL
 	return BatchRespEntry{
 		CorrelationID: corID,
 		ShortURL:      fmt.Sprintf("%s/%s", baseURL, id),

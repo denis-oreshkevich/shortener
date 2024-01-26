@@ -48,16 +48,16 @@ func run() error {
 	ctx := context.Background()
 
 	var s storage.Storage
-	if conf.DatabaseDSN() != "" {
-		dbStorage, err := storage.NewDBStorage(conf.DatabaseDSN())
+	if conf.DatabaseDSN != "" {
+		dbStorage, err := storage.NewDBStorage(conf.DatabaseDSN)
 		if err != nil {
 			return fmt.Errorf("initializing db storage %w", err)
 		}
 		defer dbStorage.Close()
 		s = dbStorage
 		logger.Log.Info("using dbStorage as storage")
-	} else if conf.FsPath() != "" {
-		fileStorage, err := storage.NewFileStorage(conf.FsPath())
+	} else if conf.FsPath != "" {
+		fileStorage, err := storage.NewFileStorage(conf.FsPath)
 		if err != nil {
 			return fmt.Errorf("initializing file storage %w", err)
 		}
@@ -81,17 +81,15 @@ func run() error {
 	uh := server.New(conf, sh, delChannel)
 	r := setUpRouter(conf, uh)
 
-	addr := fmt.Sprintf("%s:%s", conf.Host(), conf.Port())
-
 	var err error
-	if conf.EnableHTTPS() {
+	if conf.EnableHTTPS {
 		manager, errHTTPS := server.NewCertManager("./certs/cert.pem", "./certs/key.pem")
 		if errHTTPS != nil {
 			return fmt.Errorf("server.NewCertManager: %w", errHTTPS)
 		}
-		err = r.RunTLS(addr, manager.CertPath, manager.KeyPath)
+		err = r.RunTLS(conf.ServerAddress, manager.CertPath, manager.KeyPath)
 	} else {
-		err = r.Run(addr)
+		err = r.Run(conf.ServerAddress)
 	}
 
 	if err != nil {
@@ -107,7 +105,7 @@ func setUpRouter(conf config.Conf, uh *server.Server) *gin.Engine {
 	r.Use(gin.Recovery(), server.JWTAuth, server.Gzip, server.Logging)
 
 	r.POST(`/`, uh.Post)
-	r.GET(conf.BasePath()+`/:id`, uh.Get)
+	r.GET(conf.BasePath+`/:id`, uh.Get)
 	r.GET(`/api/user/urls`, uh.GetUsersURLs)
 	r.POST(`/api/shorten`, uh.ShortenPost)
 	r.POST(`/api/shorten/batch`, uh.ShortenBatch)

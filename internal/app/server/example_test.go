@@ -42,7 +42,7 @@ func ExampleServer_Get() {
 	r.GET("/:id", srv.Get)
 
 	// Creating new HTTP-request
-	req := httptest.NewRequest("GET", conf.BaseURL()+"/"+shortURL, nil)
+	req := httptest.NewRequest("GET", conf.BaseURL+"/"+shortURL, nil)
 	w := httptest.NewRecorder()
 
 	// Making request

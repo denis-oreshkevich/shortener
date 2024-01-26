@@ -1,39 +1,13 @@
 package config
 
 import (
-	"errors"
+	"encoding/json"
 	"flag"
 	"fmt"
-	"net"
+	"github.com/caarlos0/env/v6"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
-
-	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
-	"github.com/denis-oreshkevich/shortener/internal/app/util/validator"
-)
-
-// Constants for configuration.
-const (
-	// ServerAddressEnvName Server address environment variable name.
-	ServerAddressEnvName = "SERVER_ADDRESS"
-
-	// BaseURLEnvName Base URL environment variable name.
-	BaseURLEnvName = "BASE_URL"
-
-	// FileStoragePath File storage environment variable name.
-	FileStoragePath = "FILE_STORAGE_PATH"
-
-	databaseDSN = "DATABASE_DSN"
-
-	enableHTTPS = "ENABLE_HTTPS"
-
-	defaultHost = "localhost"
-
-	defaultPort = "8080"
-
-	defaultScheme = "http"
 )
 
 var conf Conf
@@ -43,139 +17,41 @@ func Get() Conf {
 	return conf
 }
 
-type initStructure struct {
-	envName  string
-	argVal   string
-	initFunc func(s string) error
-}
-
-// Parse func parses command line and environment variables and init Conf [config.Conf]
+// Parse func parses command line and environment variables and init Config [config.Conf]
 func Parse() error {
-	conf = Conf{}
-	a := flag.String("a", fmt.Sprintf("%s:%s", defaultHost, defaultPort), "HTTP server address")
-	b := flag.String("b", fmt.Sprintf("%s://%s:%s", defaultScheme, defaultHost, defaultPort), "HTTP server base URL")
-	// /tmp/short-url-db.json
-	f := flag.String("f", "", "Path to storage file")
+	flag.StringVar(&conf.ConfFilePath, "c", "./conf/config.json",
+		"Path to config JSON file")
+
+	file, err := os.ReadFile(conf.ConfFilePath)
+
+	err = json.Unmarshal(file, &conf)
+	if err != nil {
+		return fmt.Errorf("json.Unmarshal: %w", err)
+	}
+
+	flag.StringVar(&conf.ServerAddress, "a", "", "HTTP server address")
+
+	flag.StringVar(&conf.BaseURL, "b", "", "HTTP server base URL")
+
+	flag.StringVar(&conf.FsPath, "f", "", "Path to file storage")
+
 	//host=localhost port=5433 user=postgres password=postgres dbname=courses sslmode=disable
-	d := flag.String("d", "", "Database connection")
-	s := flag.String("s", "false", "Enables HTTPS")
+	flag.StringVar(&conf.DatabaseDSN, "d", "", "Data Source Name (DSN)")
+
+	flag.BoolVar(&conf.EnableHTTPS, "s", false, "Enables HTTPS")
+
 	flag.Parse()
 
-	isa := initStructure{
-		envName:  ServerAddressEnvName,
-		argVal:   *a,
-		initFunc: serverAddrFunc(),
-	}
-
-	err := initAppParam(isa)
+	err = env.Parse(&conf)
 	if err != nil {
-		return err
+		return fmt.Errorf("env.Parse: %w", err)
 	}
-
-	ibu := initStructure{
-		envName:  BaseURLEnvName,
-		argVal:   *b,
-		initFunc: baseURLFunc(),
-	}
-
-	err = initAppParam(ibu)
+	parsed, err := url.Parse(conf.BaseURL)
 	if err != nil {
-		return err
+		return fmt.Errorf("url.Parse: %w", err)
 	}
 
-	ifs := initStructure{
-		envName: FileStoragePath,
-		argVal:  *f,
-		initFunc: func(s string) error {
-			conf.fsPath = s
-			return nil
-		},
-	}
-	err = initAppParam(ifs)
-	if err != nil {
-		return err
-	}
+	conf.BasePath = strings.TrimSuffix(parsed.Path, "/")
 
-	idb := initStructure{
-		envName: databaseDSN,
-		argVal:  *d,
-		initFunc: func(s string) error {
-			conf.databaseDSN = s
-			return nil
-		},
-	}
-	err = initAppParam(idb)
-	if err != nil {
-		return err
-	}
-
-	ieh := initStructure{
-		envName: enableHTTPS,
-		argVal:  *s,
-		initFunc: func(s string) error {
-			boolValue, boolErr := strconv.ParseBool(s)
-			if boolErr != nil {
-				return fmt.Errorf("strconv.ParseBool: %w", err)
-			}
-			conf.enableHTTPS = boolValue
-			return nil
-		},
-	}
-	err = initAppParam(ieh)
-	if err != nil {
-		return err
-	}
-
-	logger.Log.Info(fmt.Sprintf("Result configuration: %+v\n", conf))
 	return nil
-}
-
-func initAppParam(is initStructure) error {
-	sa, ex := os.LookupEnv(is.envName)
-	if !ex {
-		sa = is.argVal
-		logger.Log.Info(fmt.Sprintf("Env variable %s not found try to init from command line args\n", is.envName))
-	}
-	err := is.initFunc(sa)
-	return err
-}
-
-func serverAddrFunc() func(s string) error {
-	return func(hp string) error {
-		if hp == "" {
-			return errors.New("serverAddrFunc arg is empty")
-		}
-		host, port, err := net.SplitHostPort(hp)
-		if err != nil {
-			return fmt.Errorf("serverAddrFunc split host %w", err)
-		}
-		conf.host = host
-		conf.port = port
-		return nil
-	}
-}
-
-func baseURLFunc() func(s string) error {
-	return func(u string) error {
-		if !validator.URL(u) {
-			return errors.New("baseURLFunc validating URL")
-		}
-		parsed, err := url.Parse(u)
-		if err != nil {
-			return fmt.Errorf("baseURLFunc parse url %w", err)
-		}
-
-		host, port, err := net.SplitHostPort(parsed.Host)
-		if err != nil {
-			return fmt.Errorf("split host %w", err)
-		}
-
-		conf.scheme = parsed.Scheme
-		conf.host = host
-		conf.port = port
-		conf.basePath = strings.TrimSuffix(parsed.Path, "/")
-
-		conf.baseURL = strings.TrimSuffix(u, "/")
-		return nil
-	}
 }
