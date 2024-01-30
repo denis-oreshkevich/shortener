@@ -16,7 +16,6 @@ import (
 	"go.uber.org/zap/zapcore"
 	"log"
 	"net/http"
-	"os"
 	"os/signal"
 	"sync"
 	"syscall"
@@ -52,6 +51,8 @@ func main() {
 func run() error {
 	conf := config.Get()
 	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	defer stop()
 
 	var s storage.Storage
 	if conf.DatabaseDSN() != "" {
@@ -79,9 +80,6 @@ func run() error {
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	sh := shortener.New(s)
 
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
-
 	var wg sync.WaitGroup
 
 	//delete worker
@@ -104,13 +102,13 @@ func run() error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		<-sigint
-
-		close(delChannel)
+		<-ctx.Done()
 
 		if err := srv.Shutdown(context.Background()); err != nil {
 			logger.Log.Error("HTTP server Shutdown", zap.Error(err))
 		}
+
+		close(delChannel)
 	}()
 
 	var err error

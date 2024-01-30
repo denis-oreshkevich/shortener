@@ -230,9 +230,7 @@ func (s Server) DeleteURLs(c *gin.Context) {
 	ctx := c.Request.Context()
 	userID, userErr := s.sh.GetUserID(ctx)
 	body, bodyErr := io.ReadAll(req.Body)
-	in := make(chan model.BatchDeleteEntry)
 	f := func() {
-		defer close(in)
 		if userErr != nil {
 			logger.Log.Error("get userID", zap.Error(userErr))
 			return
@@ -252,16 +250,10 @@ func (s Server) DeleteURLs(c *gin.Context) {
 			return
 		}
 		entry := model.NewBatchDeleteEntry(userID, batch)
-		logger.Log.Debug("send to channel in")
-		in <- entry
-	}
-	go f()
-	go func() {
-		entry := <-in
 		logger.Log.Debug("send to delChannel")
 		s.delChannel <- entry
-	}()
-
+	}
+	go f()
 	c.AbortWithStatus(http.StatusAccepted)
 }
 
