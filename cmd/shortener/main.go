@@ -81,7 +81,19 @@ func run() error {
 	uh := server.New(conf, sh, delChannel)
 	r := setUpRouter(conf, uh)
 
-	err := r.Run(fmt.Sprintf("%s:%s", conf.Host(), conf.Port()))
+	addr := fmt.Sprintf("%s:%s", conf.Host(), conf.Port())
+
+	var err error
+	if conf.EnableHTTPS() {
+		manager, errHTTPS := server.NewCertManager("./certs/cert.pem", "./certs/key.pem")
+		if errHTTPS != nil {
+			return fmt.Errorf("server.NewCertManager: %w", errHTTPS)
+		}
+		err = r.RunTLS(addr, manager.CertPath, manager.KeyPath)
+	} else {
+		err = r.Run(addr)
+	}
+
 	if err != nil {
 		return fmt.Errorf("router run %w", err)
 	}
