@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/denis-oreshkevich/shortener/internal/app/config"
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
@@ -14,6 +15,10 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"log"
+	"net/http"
+	"os/signal"
+	"sync"
+	"syscall"
 )
 
 var buildVersion = "N/A"
@@ -46,6 +51,8 @@ func main() {
 func run() error {
 	conf := config.Get()
 	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	defer stop()
 
 	var s storage.Storage
 	if conf.DatabaseDSN() != "" {
@@ -73,8 +80,12 @@ func run() error {
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	sh := shortener.New(s)
 
+	var wg sync.WaitGroup
+
 	//delete worker
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		sh.DeleteUserURLs(ctx, delChannel)
 	}()
 
@@ -83,20 +94,44 @@ func run() error {
 
 	addr := fmt.Sprintf("%s:%s", conf.Host(), conf.Port())
 
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: r,
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		<-ctx.Done()
+
+		if err := srv.Shutdown(context.Background()); err != nil {
+			logger.Log.Error("HTTP server Shutdown", zap.Error(err))
+		}
+
+		close(delChannel)
+	}()
+
 	var err error
 	if conf.EnableHTTPS() {
 		manager, errHTTPS := server.NewCertManager("./certs/cert.pem", "./certs/key.pem")
 		if errHTTPS != nil {
 			return fmt.Errorf("server.NewCertManager: %w", errHTTPS)
 		}
-		err = r.RunTLS(addr, manager.CertPath, manager.KeyPath)
+		err = srv.ListenAndServeTLS(manager.CertPath, manager.KeyPath)
 	} else {
-		err = r.Run(addr)
+		err = srv.ListenAndServe()
 	}
 
 	if err != nil {
-		return fmt.Errorf("router run %w", err)
+		if errors.Is(err, http.ErrServerClosed) {
+			logger.Log.Info("Server closed")
+		} else {
+			return fmt.Errorf("router run %w", err)
+		}
 	}
+
+	wg.Wait()
+	logger.Log.Info("Server Shutdown gracefully")
 	return nil
 }
 

@@ -6,7 +6,9 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"fmt"
+	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
 	"log"
 	"math/big"
 	"net"
@@ -22,6 +24,21 @@ type CertManager struct {
 
 // NewCertManager creates new CertManager
 func NewCertManager(certPath, keyPath string) (*CertManager, error) {
+	var create bool
+	if _, err := os.Stat(certPath); errors.Is(err, os.ErrNotExist) {
+		logger.Log.Info("certificate is not exist")
+		create = true
+	}
+	if _, err := os.Stat(keyPath); errors.Is(err, os.ErrNotExist) {
+		logger.Log.Info("key is not exist")
+		create = true
+	}
+	if !create {
+		return &CertManager{
+			CertPath: certPath,
+			KeyPath:  keyPath,
+		}, nil
+	}
 	// создаём шаблон сертификата
 	cert := &x509.Certificate{
 		// указываем уникальный номер сертификата
