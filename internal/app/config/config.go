@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -37,6 +38,7 @@ const (
 )
 
 var conf Conf
+var cfJSON confJSON
 
 // Get Conf global variable that holds properties from command line and environment variables.
 func Get() Conf {
@@ -44,38 +46,52 @@ func Get() Conf {
 }
 
 type initStructure struct {
-	envName  string
-	argVal   string
-	initFunc func(s string) error
+	envName    string
+	argVal     string
+	defaultVal string
+	initFunc   func(s string) error
 }
 
 // Parse func parses command line and environment variables and init Conf [config.Conf]
 func Parse() error {
 	conf = Conf{}
-	a := flag.String("a", fmt.Sprintf("%s:%s", defaultHost, defaultPort), "HTTP server address")
-	b := flag.String("b", fmt.Sprintf("%s://%s:%s", defaultScheme, defaultHost, defaultPort), "HTTP server base URL")
+	a := flag.String("a", "", "HTTP server address")
+	b := flag.String("b", "", "HTTP server base URL")
 	// /tmp/short-url-db.json
 	f := flag.String("f", "", "Path to storage file")
 	//host=localhost port=5433 user=postgres password=postgres dbname=courses sslmode=disable
 	d := flag.String("d", "", "Database connection")
-	s := flag.String("s", "false", "Enables HTTPS")
+	s := flag.String("s", "", "Enables HTTPS")
+	c := flag.String("c", "./conf/config.json", "Path to configuration file")
 	flag.Parse()
 
-	isa := initStructure{
-		envName:  ServerAddressEnvName,
-		argVal:   *a,
-		initFunc: serverAddrFunc(),
+	file, err := os.ReadFile(*c)
+	if err != nil {
+		return fmt.Errorf("os.ReadFile: %w", err)
 	}
 
-	err := initAppParam(isa)
+	err = json.Unmarshal(file, &cfJSON)
+	if err != nil {
+		return fmt.Errorf("json.Unmarshal: %w", err)
+	}
+
+	isa := initStructure{
+		envName:    ServerAddressEnvName,
+		argVal:     *a,
+		defaultVal: cfJSON.ServerAddress,
+		initFunc:   serverAddrFunc(),
+	}
+
+	err = initAppParam(isa)
 	if err != nil {
 		return err
 	}
 
 	ibu := initStructure{
-		envName:  BaseURLEnvName,
-		argVal:   *b,
-		initFunc: baseURLFunc(),
+		envName:    BaseURLEnvName,
+		argVal:     *b,
+		defaultVal: cfJSON.BaseURL,
+		initFunc:   baseURLFunc(),
 	}
 
 	err = initAppParam(ibu)
@@ -84,8 +100,9 @@ func Parse() error {
 	}
 
 	ifs := initStructure{
-		envName: FileStoragePath,
-		argVal:  *f,
+		envName:    FileStoragePath,
+		argVal:     *f,
+		defaultVal: cfJSON.FsPath,
 		initFunc: func(s string) error {
 			conf.fsPath = s
 			return nil
@@ -97,8 +114,9 @@ func Parse() error {
 	}
 
 	idb := initStructure{
-		envName: databaseDSN,
-		argVal:  *d,
+		envName:    databaseDSN,
+		argVal:     *d,
+		defaultVal: cfJSON.DatabaseDSN,
 		initFunc: func(s string) error {
 			conf.databaseDSN = s
 			return nil
@@ -110,9 +128,14 @@ func Parse() error {
 	}
 
 	ieh := initStructure{
-		envName: enableHTTPS,
-		argVal:  *s,
+		envName:    enableHTTPS,
+		argVal:     *s,
+		defaultVal: cfJSON.EnableHTTPS,
 		initFunc: func(s string) error {
+			if len(s) == 0 {
+				conf.enableHTTPS = false
+				return nil
+			}
 			boolValue, boolErr := strconv.ParseBool(s)
 			if boolErr != nil {
 				return fmt.Errorf("strconv.ParseBool: %w", err)
@@ -135,6 +158,9 @@ func initAppParam(is initStructure) error {
 	if !ex {
 		sa = is.argVal
 		logger.Log.Info(fmt.Sprintf("Env variable %s not found try to init from command line args\n", is.envName))
+	}
+	if len(sa) == 0 {
+		sa = is.defaultVal
 	}
 	err := is.initFunc(sa)
 	return err

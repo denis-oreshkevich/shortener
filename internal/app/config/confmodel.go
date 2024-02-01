@@ -51,3 +51,11 @@ func (s Conf) DatabaseDSN() string {
 func (s Conf) EnableHTTPS() bool {
 	return s.enableHTTPS
 }
+
+type confJSON struct {
+	ServerAddress string `json:"server_address"`
+	BaseURL       string `json:"base_url"`
+	FsPath        string `json:"file_storage_pat"`
+	DatabaseDSN   string `json:"database_dsn"`
+	EnableHTTPS   string `json:"enable_https"`
+}
