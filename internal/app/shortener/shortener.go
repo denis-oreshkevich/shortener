@@ -99,6 +99,11 @@ func (sh *Shortener) DeleteUserURLs(ctx context.Context, in <-chan model.BatchDe
 	}
 }
 
+// FindStats find statistic by stored values
+func (sh *Shortener) FindStats(ctx context.Context) (model.Stat, error) {
+	return sh.storage.FindStats(ctx)
+}
+
 // Ping pings storage.
 func (sh *Shortener) Ping(ctx context.Context) error {
 	return sh.storage.Ping(ctx)

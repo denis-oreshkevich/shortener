@@ -24,5 +24,7 @@ type Storage interface {
 
 	DeleteUserURLs(ctx context.Context, bde model.BatchDeleteEntry) error
 
+	FindStats(ctx context.Context) (model.Stat, error)
+
 	Ping(ctx context.Context) error
 }

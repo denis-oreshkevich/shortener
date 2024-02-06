@@ -210,6 +210,23 @@ func (ds *DBStorage) DeleteUserURLs(ctx context.Context, bde model.BatchDeleteEn
 	return nil
 }
 
+// FindStats finds statistic by saved requests.
+func (ds *DBStorage) FindStats(ctx context.Context) (model.Stat, error) {
+	stmt, err := ds.db.PrepareContext(ctx, "select count(id), count(distinct user_id) "+
+		"from courses.shortener")
+	if err != nil {
+		return model.Stat{}, fmt.Errorf("prepare context: %w", err)
+	}
+	defer stmt.Close()
+	row := stmt.QueryRowContext(ctx)
+	var stat model.Stat
+	err = row.Scan(&stat.URLs, &stat.Users)
+	if err != nil {
+		return stat, fmt.Errorf("row.Scan: %w", err)
+	}
+	return stat, nil
+}
+
 func buildIDs(it model.BatchDeleteEntry) []any {
 	var iDs = make([]any, len(it.ShortIDs)+1)
 	iDs[0] = it.UserID

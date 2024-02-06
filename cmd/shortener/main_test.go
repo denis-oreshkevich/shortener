@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -368,8 +369,6 @@ func TestGetUsersURLs(t *testing.T) {
 	defer srv.Close()
 	tSrv := newTestConf(srv, tStorage)
 
-	model.NewURLPair(generator.UUIDString(), "http://localhost:8080/den")
-
 	pairs := []model.URLPair{
 		model.NewURLPair(generator.UUIDString(), "http://localhost:8080/den"),
 		model.NewURLPair(generator.UUIDString(), "http://localhost:8080/denis"),
@@ -409,6 +408,68 @@ func TestGetUsersURLs(t *testing.T) {
 			},
 			want: want{
 				statusCode: 204,
+			},
+		},
+	}
+	RunSubTests(t, tests, tSrv)
+}
+
+func TestGetAPIInternalStats(t *testing.T) {
+	conf := config.Get()
+	_, ipNet, err := net.ParseCIDR("192.168.1.0/24")
+	if err != nil {
+		require.NoError(t, err)
+	}
+	conf.TrustedSubnetCIDR = ipNet
+	tStorage := new(mockedStorage)
+	short := shortener.New(tStorage)
+	delChannel := make(chan model.BatchDeleteEntry, 3)
+	uh := server.New(conf, short, delChannel)
+	r := setUpRouter(conf, uh)
+
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+	tSrv := newTestConf(srv, tStorage)
+
+	tests := []test{
+		{
+			name:   "simple test get user's URL #1",
+			isMock: true,
+			mockOn: func(m *mockedStorage) *mock.Call {
+				return m.On("FindStats", mock.Anything).Return(model.Stat{
+					URLs:  2,
+					Users: 1,
+				}, nil)
+			},
+			reqFunc: func() *http.Request {
+				req := httptest.NewRequest("GET", tSrv.URL+conf.
+					BasePath()+"/api/internal/stats", nil)
+				req.RequestURI = ""
+				req.Header.Set("x-real-ip", "192.168.1.100")
+				return req
+			},
+			want: want{
+				contentType: server.ApplicationJSON,
+				statusCode:  200,
+			},
+		},
+		{
+			name:   "no ip header test #2",
+			isMock: true,
+			mockOn: func(m *mockedStorage) *mock.Call {
+				return m.On("FindStats", mock.Anything).Return(model.Stat{
+					URLs:  2,
+					Users: 1,
+				}, nil)
+			},
+			reqFunc: func() *http.Request {
+				req := httptest.NewRequest("GET", tSrv.URL+conf.
+					BasePath()+"/api/internal/stats", nil)
+				req.RequestURI = ""
+				return req
+			},
+			want: want{
+				statusCode: 403,
 			},
 		},
 	}

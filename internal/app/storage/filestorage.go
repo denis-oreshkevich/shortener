@@ -174,6 +174,12 @@ func (fs *FileStorage) DeleteUserURLs(ctx context.Context, bde model.BatchDelete
 	}
 	return nil
 }
+
+// FindStats finds statistic by saved requests.
+func (fs *FileStorage) FindStats(ctx context.Context) (model.Stat, error) {
+	return fs.cache.FindStats(ctx)
+}
+
 func (fs *FileStorage) readFileToMap(shr *FSModel, content map[string]*FSModel) error {
 	for {
 		data, err := fs.rw.ReadBytes('\n')

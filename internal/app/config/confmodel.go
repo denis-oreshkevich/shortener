@@ -1,15 +1,21 @@
 package config
 
+import (
+	"net"
+)
+
 // Conf model that represents a configuration from ENV or command line.
 type Conf struct {
-	scheme      string
-	host        string
-	port        string
-	baseURL     string
-	basePath    string
-	fsPath      string
-	databaseDSN string
-	enableHTTPS bool
+	scheme            string
+	host              string
+	port              string
+	baseURL           string
+	basePath          string
+	fsPath            string
+	databaseDSN       string
+	enableHTTPS       bool
+	trustedSubnet     string
+	TrustedSubnetCIDR *net.IPNet
 }
 
 // Scheme getter for field scheme.
@@ -52,10 +58,16 @@ func (s Conf) EnableHTTPS() bool {
 	return s.enableHTTPS
 }
 
+// TrustedSubnet getter for field trustedSubnet.
+func (s Conf) TrustedSubnet() string {
+	return s.trustedSubnet
+}
+
 type confJSON struct {
 	ServerAddress string `json:"server_address"`
 	BaseURL       string `json:"base_url"`
 	FsPath        string `json:"file_storage_pat"`
 	DatabaseDSN   string `json:"database_dsn"`
 	EnableHTTPS   string `json:"enable_https"`
+	TrustedSubnet string `json:"trusted_subnet"`
 }

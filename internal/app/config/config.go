@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"go.uber.org/zap"
 	"net"
 	"net/url"
 	"os"
@@ -29,6 +30,8 @@ const (
 	databaseDSN = "DATABASE_DSN"
 
 	enableHTTPS = "ENABLE_HTTPS"
+
+	trustedSubnet = "TRUSTED_SUBNET"
 
 	defaultHost = "localhost"
 
@@ -60,8 +63,9 @@ func Parse() error {
 	// /tmp/short-url-db.json
 	f := flag.String("f", "", "Path to storage file")
 	//host=localhost port=5433 user=postgres password=postgres dbname=courses sslmode=disable
-	d := flag.String("d", "", "Database connection")
+	d := flag.String("d", "host=localhost port=5433 user=postgres password=postgres dbname=courses sslmode=disable", "Database connection")
 	s := flag.String("s", "", "Enables HTTPS")
+	t := flag.String("t", "", "Trusted subnet")
 	c := flag.String("c", "./conf/config.json", "Path to configuration file")
 	flag.Parse()
 
@@ -145,6 +149,25 @@ func Parse() error {
 		},
 	}
 	err = initAppParam(ieh)
+	if err != nil {
+		return err
+	}
+
+	its := initStructure{
+		envName:    trustedSubnet,
+		argVal:     *t,
+		defaultVal: cfJSON.TrustedSubnet,
+		initFunc: func(s string) error {
+			conf.trustedSubnet = s
+			_, ipNet, pErr := net.ParseCIDR(s)
+			if pErr != nil {
+				logger.Log.Info("Error parsing CIDR", zap.Error(pErr))
+			}
+			conf.TrustedSubnetCIDR = ipNet
+			return nil
+		},
+	}
+	err = initAppParam(its)
 	if err != nil {
 		return err
 	}
