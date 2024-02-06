@@ -32,12 +32,6 @@ const (
 	enableHTTPS = "ENABLE_HTTPS"
 
 	trustedSubnet = "TRUSTED_SUBNET"
-
-	defaultHost = "localhost"
-
-	defaultPort = "8080"
-
-	defaultScheme = "http"
 )
 
 var conf Conf
@@ -63,7 +57,7 @@ func Parse() error {
 	// /tmp/short-url-db.json
 	f := flag.String("f", "", "Path to storage file")
 	//host=localhost port=5433 user=postgres password=postgres dbname=courses sslmode=disable
-	d := flag.String("d", "host=localhost port=5433 user=postgres password=postgres dbname=courses sslmode=disable", "Database connection")
+	d := flag.String("d", "", "Database connection")
 	s := flag.String("s", "", "Enables HTTPS")
 	t := flag.String("t", "", "Trusted subnet")
 	c := flag.String("c", "./conf/config.json", "Path to configuration file")

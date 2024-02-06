@@ -271,7 +271,7 @@ func (s Server) GetAPIInternalStats(c *gin.Context) {
 	}
 	ipNet := s.conf.TrustedSubnetCIDR
 	if ipNet == nil {
-		logger.Log.Debug(fmt.Sprintf("SubNet param is empty"))
+		logger.Log.Debug("SubNet param is empty")
 		c.AbortWithStatus(http.StatusForbidden)
 		return
 	}
