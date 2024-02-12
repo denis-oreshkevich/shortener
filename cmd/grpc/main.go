@@ -17,7 +17,6 @@ import (
 	"google.golang.org/grpc/reflection"
 	"log"
 	"net"
-	"net/http"
 	"os/signal"
 	"sync"
 	"syscall"
@@ -115,14 +114,6 @@ func run() error {
 			logger.Log.Info("Server closed")
 		}
 		return fmt.Errorf("router run %w", err)
-	}
-
-	if err != nil {
-		if errors.Is(err, http.ErrServerClosed) {
-			logger.Log.Info("Server closed")
-		} else {
-			return fmt.Errorf("router run %w", err)
-		}
 	}
 
 	wg.Wait()
