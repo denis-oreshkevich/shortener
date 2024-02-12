@@ -27,7 +27,7 @@ import (
 
 func TestPost(t *testing.T) {
 	conf := config.Get()
-	tStorage := new(mockedStorage)
+	tStorage := new(storage.MockedStorage)
 	short := shortener.New(tStorage)
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	uh := server.New(conf, short, delChannel)
@@ -41,7 +41,7 @@ func TestPost(t *testing.T) {
 		{
 			name:   "simple Post test #1",
 			isMock: true,
-			mockOn: func(m *mockedStorage) *mock.Call {
+			mockOn: func(m *storage.MockedStorage) *mock.Call {
 				return m.On("SaveURL", mock.Anything, mock.Anything,
 					mock.Anything).Return("CCCCCCCC", nil)
 			},
@@ -90,7 +90,7 @@ func TestPost(t *testing.T) {
 
 func TestGet(t *testing.T) {
 	conf := config.Get()
-	tStorage := new(mockedStorage)
+	tStorage := new(storage.MockedStorage)
 	short := shortener.New(tStorage)
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	uh := server.New(conf, short, delChannel)
@@ -104,7 +104,7 @@ func TestGet(t *testing.T) {
 		{
 			name:   "simple Get test #1",
 			isMock: true,
-			mockOn: func(m *mockedStorage) *mock.Call {
+			mockOn: func(m *storage.MockedStorage) *mock.Call {
 				origURL := storage.NewOrigURL("http://localhost:30001/", "", false)
 				return m.On("FindURL", mock.Anything, "AAAAAAAA").Return(
 					&origURL, nil)
@@ -136,7 +136,7 @@ func TestGet(t *testing.T) {
 		{
 			name:   "not stored url Get test #3",
 			isMock: true,
-			mockOn: func(m *mockedStorage) *mock.Call {
+			mockOn: func(m *storage.MockedStorage) *mock.Call {
 				return m.On("FindURL", mock.Anything, "HHHHHHHH").Return(&storage.OrigURL{}, errors.New("test error"))
 			},
 			reqFunc: func() *http.Request {
@@ -155,7 +155,7 @@ func TestGet(t *testing.T) {
 
 func TestShortenPost(t *testing.T) {
 	conf := config.Get()
-	tStorage := new(mockedStorage)
+	tStorage := new(storage.MockedStorage)
 	short := shortener.New(tStorage)
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	uh := server.New(conf, short, delChannel)
@@ -173,7 +173,7 @@ func TestShortenPost(t *testing.T) {
 		{
 			name:   "simple ShortenPost test #1",
 			isMock: true,
-			mockOn: func(m *mockedStorage) *mock.Call {
+			mockOn: func(m *storage.MockedStorage) *mock.Call {
 				return m.On("SaveURL", mock.Anything, mock.Anything,
 					mock.Anything).Return("EEEEEEEE", nil)
 			},
@@ -233,7 +233,7 @@ func TestShortenPost(t *testing.T) {
 
 func TestShortenBatch(t *testing.T) {
 	conf := config.Get()
-	tStorage := new(mockedStorage)
+	tStorage := new(storage.MockedStorage)
 	short := shortener.New(tStorage)
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	uh := server.New(conf, short, delChannel)
@@ -257,7 +257,7 @@ func TestShortenBatch(t *testing.T) {
 		{
 			name:   "simple ShortenBatch test #1",
 			isMock: true,
-			mockOn: func(m *mockedStorage) *mock.Call {
+			mockOn: func(m *storage.MockedStorage) *mock.Call {
 				return m.On("SaveURLBatch", mock.Anything, mock.Anything,
 					mock.Anything).Return(bResp, nil)
 			},
@@ -301,7 +301,7 @@ func TestShortenBatch(t *testing.T) {
 
 func TestNoRoutes(t *testing.T) {
 	conf := config.Get()
-	tStorage := new(mockedStorage)
+	tStorage := new(storage.MockedStorage)
 	short := shortener.New(tStorage)
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	uh := server.New(conf, short, delChannel)
@@ -359,7 +359,7 @@ func TestNoRoutes(t *testing.T) {
 
 func TestGetUsersURLs(t *testing.T) {
 	conf := config.Get()
-	tStorage := new(mockedStorage)
+	tStorage := new(storage.MockedStorage)
 	short := shortener.New(tStorage)
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	uh := server.New(conf, short, delChannel)
@@ -378,7 +378,7 @@ func TestGetUsersURLs(t *testing.T) {
 		{
 			name:   "simple test get user's URL #1",
 			isMock: true,
-			mockOn: func(m *mockedStorage) *mock.Call {
+			mockOn: func(m *storage.MockedStorage) *mock.Call {
 				return m.On("FindUserURLs", mock.Anything, mock.Anything,
 					mock.Anything).Return(pairs, nil)
 			},
@@ -396,7 +396,7 @@ func TestGetUsersURLs(t *testing.T) {
 		{
 			name:   "empty result get user's URL #2",
 			isMock: true,
-			mockOn: func(m *mockedStorage) *mock.Call {
+			mockOn: func(m *storage.MockedStorage) *mock.Call {
 				return m.On("FindUserURLs", mock.Anything, mock.Anything,
 					mock.Anything).Return(pairs, shortener.ErrUserItemsNotFound)
 			},
@@ -421,7 +421,7 @@ func TestGetAPIInternalStats(t *testing.T) {
 		require.NoError(t, err)
 	}
 	conf.TrustedSubnetCIDR = ipNet
-	tStorage := new(mockedStorage)
+	tStorage := new(storage.MockedStorage)
 	short := shortener.New(tStorage)
 	delChannel := make(chan model.BatchDeleteEntry, 3)
 	uh := server.New(conf, short, delChannel)
@@ -435,7 +435,7 @@ func TestGetAPIInternalStats(t *testing.T) {
 		{
 			name:   "simple test get user's URL #1",
 			isMock: true,
-			mockOn: func(m *mockedStorage) *mock.Call {
+			mockOn: func(m *storage.MockedStorage) *mock.Call {
 				return m.On("FindStats", mock.Anything).Return(model.Stat{
 					URLs:  2,
 					Users: 1,
@@ -456,7 +456,7 @@ func TestGetAPIInternalStats(t *testing.T) {
 		{
 			name:   "no ip header test #2",
 			isMock: true,
-			mockOn: func(m *mockedStorage) *mock.Call {
+			mockOn: func(m *storage.MockedStorage) *mock.Call {
 				return m.On("FindStats", mock.Anything).Return(model.Stat{
 					URLs:  2,
 					Users: 1,
@@ -478,7 +478,7 @@ func TestGetAPIInternalStats(t *testing.T) {
 
 func TestGzipCompression(t *testing.T) {
 	conf := config.Get()
-	tStorage := new(mockedStorage)
+	tStorage := new(storage.MockedStorage)
 	tStorage.On("SaveURL", mock.Anything, mock.Anything,
 		mock.Anything).Return("MMMMMMMM", nil)
 	short := shortener.New(tStorage)
