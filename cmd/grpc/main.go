@@ -93,12 +93,10 @@ func run() error {
 	srv := grpc.NewServer()
 	wg.Add(1)
 	go func() {
-		defer func() {
-			<-ctx.Done()
-		}()
+		defer close(delChannel)
 		defer wg.Done()
+		<-ctx.Done()
 		srv.GracefulStop()
-		close(delChannel)
 	}()
 
 	lis, err := net.Listen("tcp", ":3200")
