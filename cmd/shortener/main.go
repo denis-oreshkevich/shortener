@@ -101,8 +101,10 @@ func run() error {
 
 	wg.Add(1)
 	go func() {
+		defer func() {
+			<-ctx.Done()
+		}()
 		defer wg.Done()
-		<-ctx.Done()
 
 		if err := srv.Shutdown(context.Background()); err != nil {
 			logger.Log.Error("HTTP server Shutdown", zap.Error(err))
