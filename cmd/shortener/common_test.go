@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"io"
 	"net/http"
 	"net/http/cookiejar"
@@ -11,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/denis-oreshkevich/shortener/internal/app/config"
-	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/denis-oreshkevich/shortener/internal/app/server"
 	"github.com/denis-oreshkevich/shortener/internal/app/storage"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/auth"
@@ -22,52 +20,12 @@ import (
 
 var IDURLRegex = regexp.MustCompile(config.Get().BaseURL() + "/[A-Za-z0-9]{8}$")
 
-type mockedStorage struct {
-	mock.Mock
-}
-
-func (m *mockedStorage) FindStats(ctx context.Context) (model.Stat, error) {
-	args := m.Called(ctx)
-	return args.Get(0).(model.Stat), args.Error(1)
-}
-
-func (m *mockedStorage) FindURL(ctx context.Context, id string) (*storage.OrigURL, error) {
-	args := m.Called(ctx, id)
-	return args.Get(0).(*storage.OrigURL), args.Error(1)
-}
-
-func (m *mockedStorage) DeleteUserURLs(ctx context.Context, bde model.BatchDeleteEntry) error {
-	args := m.Called(ctx, bde)
-	return args.Error(0)
-}
-
-func (m *mockedStorage) SaveURL(ctx context.Context, userID string, url string) (string, error) {
-	args := m.Called(ctx, userID, url)
-	return args.String(0), args.Error(1)
-}
-
-func (m *mockedStorage) SaveURLBatch(ctx context.Context, userID string,
-	batch []model.BatchReqEntry) ([]model.BatchRespEntry, error) {
-	args := m.Called(ctx, userID, batch)
-	return args.Get(0).([]model.BatchRespEntry), args.Error(1)
-}
-
-func (m *mockedStorage) FindUserURLs(ctx context.Context, userID string) ([]model.URLPair, error) {
-	args := m.Called(ctx, userID)
-	return args.Get(0).([]model.URLPair), args.Error(1)
-}
-
-func (m *mockedStorage) Ping(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
-
 type testConf struct {
 	*httptest.Server
-	tStorage *mockedStorage
+	tStorage *storage.MockedStorage
 }
 
-func newTestConf(srv *httptest.Server, tStorage *mockedStorage) *testConf {
+func newTestConf(srv *httptest.Server, tStorage *storage.MockedStorage) *testConf {
 	return &testConf{Server: srv, tStorage: tStorage}
 }
 
@@ -81,13 +39,13 @@ type want struct {
 type test struct {
 	name    string
 	isMock  bool
-	mockOn  func(m *mockedStorage) *mock.Call
+	mockOn  func(m *storage.MockedStorage) *mock.Call
 	reqFunc func() *http.Request
 	want    want
 }
 
 func RunSubTests(t *testing.T, tests []test, testConf *testConf) {
-	storage := testConf.tStorage
+	st := testConf.tStorage
 	client := createHTTPAuthClient(t, testConf.Server)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -96,14 +54,14 @@ func RunSubTests(t *testing.T, tests []test, testConf *testConf) {
 			var mockCall *mock.Call
 
 			if tt.isMock {
-				mockCall = tt.mockOn(storage)
+				mockCall = tt.mockOn(st)
 			}
 
 			resp, err := client.Do(request)
 			require.NoError(t, err)
 
 			if tt.isMock {
-				storage.AssertExpectations(t)
+				st.AssertExpectations(t)
 				mockCall.Unset()
 			}
 

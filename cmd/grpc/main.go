@@ -7,15 +7,16 @@ import (
 	"github.com/denis-oreshkevich/shortener/internal/app/config"
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/denis-oreshkevich/shortener/internal/app/server"
+	pb "github.com/denis-oreshkevich/shortener/internal/app/server/proto"
 	"github.com/denis-oreshkevich/shortener/internal/app/shortener"
 	"github.com/denis-oreshkevich/shortener/internal/app/storage"
 	"github.com/denis-oreshkevich/shortener/internal/app/util/logger"
-	"github.com/gin-contrib/pprof"
-	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 	"log"
-	"net/http"
+	"net"
 	"os/signal"
 	"sync"
 	"syscall"
@@ -89,66 +90,33 @@ func run() error {
 		sh.DeleteUserURLs(ctx, delChannel)
 	}()
 
-	uh := server.New(conf, sh, delChannel)
-	r := setUpRouter(conf, uh)
-
-	addr := fmt.Sprintf("%s:%s", conf.Host(), conf.Port())
-
-	srv := &http.Server{
-		Addr:    addr,
-		Handler: r,
-	}
-
+	srv := grpc.NewServer()
 	wg.Add(1)
 	go func() {
 		defer close(delChannel)
 		defer wg.Done()
 		<-ctx.Done()
-
-		if err := srv.Shutdown(context.Background()); err != nil {
-			logger.Log.Error("HTTP server Shutdown", zap.Error(err))
-		}
+		srv.GracefulStop()
 	}()
 
-	var err error
-	if conf.EnableHTTPS() {
-		manager, errHTTPS := server.NewCertManager("./certs/cert.pem", "./certs/key.pem")
-		if errHTTPS != nil {
-			return fmt.Errorf("server.NewCertManager: %w", errHTTPS)
-		}
-		err = srv.ListenAndServeTLS(manager.CertPath, manager.KeyPath)
-	} else {
-		err = srv.ListenAndServe()
+	lis, err := net.Listen("tcp", ":3200")
+	if err != nil {
+		return fmt.Errorf("net.Listen: %w", err)
 	}
 
-	if err != nil {
-		if errors.Is(err, http.ErrServerClosed) {
+	gs := server.NewGRPCServer(sh, conf, delChannel)
+
+	reflection.Register(srv)
+
+	pb.RegisterShortenerServer(srv, gs)
+	if err = srv.Serve(lis); err != nil {
+		if errors.Is(err, grpc.ErrServerStopped) {
 			logger.Log.Info("Server closed")
-		} else {
-			return fmt.Errorf("router run %w", err)
 		}
+		return fmt.Errorf("router run %w", err)
 	}
 
 	wg.Wait()
 	logger.Log.Info("Server Shutdown gracefully")
 	return nil
-}
-
-func setUpRouter(conf config.Conf, uh *server.Server) *gin.Engine {
-	r := gin.New()
-	pprof.Register(r)
-
-	r.Use(gin.Recovery(), server.JWTAuth, server.Gzip, server.Logging)
-
-	r.POST(`/`, uh.Post)
-	r.GET(conf.BasePath()+`/:id`, uh.Get)
-	r.GET(`/api/user/urls`, uh.GetUsersURLs)
-	r.POST(`/api/shorten`, uh.ShortenPost)
-	r.POST(`/api/shorten/batch`, uh.ShortenBatch)
-	r.GET(`/ping`, uh.Ping)
-	r.DELETE(`/api/user/urls`, uh.DeleteURLs)
-	r.GET(`/api/internal/stats`, uh.GetAPIInternalStats)
-	r.NoRoute(uh.NoRoute)
-
-	return r
 }
