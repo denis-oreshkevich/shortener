@@ -90,9 +90,18 @@ func (ms *MapStorage) FindUserURLs(ctx context.Context, userID string) ([]model.
 
 // DeleteUserURLs deletes user's URLs.
 func (ms *MapStorage) DeleteUserURLs(ctx context.Context, bde model.BatchDeleteEntry) error {
+	ms.mx.RLock()
+	defer ms.mx.RUnlock()
+	return ms.deleteUserURLsNotSync(ctx, bde)
+}
+
+// FindStats finds statistic by saved requests.
+func (ms *MapStorage) FindStats(ctx context.Context) (model.Stat, error) {
 	ms.mx.Lock()
 	defer ms.mx.Unlock()
-	return ms.deleteUserURLsNotSync(ctx, bde)
+	users := len(ms.userURLs)
+	urls := len(ms.items)
+	return model.NewStat(urls, users), nil
 }
 
 func (ms *MapStorage) deleteUserURLsNotSync(ctx context.Context,

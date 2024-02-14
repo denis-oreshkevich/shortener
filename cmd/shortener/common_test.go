@@ -26,6 +26,11 @@ type mockedStorage struct {
 	mock.Mock
 }
 
+func (m *mockedStorage) FindStats(ctx context.Context) (model.Stat, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(model.Stat), args.Error(1)
+}
+
 func (m *mockedStorage) FindURL(ctx context.Context, id string) (*storage.OrigURL, error) {
 	args := m.Called(ctx, id)
 	return args.Get(0).(*storage.OrigURL), args.Error(1)

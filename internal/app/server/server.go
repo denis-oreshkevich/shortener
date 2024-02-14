@@ -4,9 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
-
 	"github.com/denis-oreshkevich/shortener/internal/app/config"
 	"github.com/denis-oreshkevich/shortener/internal/app/model"
 	"github.com/denis-oreshkevich/shortener/internal/app/shortener"
@@ -15,6 +12,9 @@ import (
 	"github.com/denis-oreshkevich/shortener/internal/app/util/validator"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"io"
+	"net"
+	"net/http"
 )
 
 // Content-type constants
@@ -22,6 +22,8 @@ const (
 	ContentType     = "Content-type"
 	TextPlain       = "text/plain; charset=utf-8"
 	ApplicationJSON = "application/json; charset=utf-8"
+
+	RealIPHeader = "X-REAL-IP"
 )
 
 // Server structure represents holder for all handlers.
@@ -255,6 +257,42 @@ func (s Server) DeleteURLs(c *gin.Context) {
 	}
 	go f()
 	c.AbortWithStatus(http.StatusAccepted)
+}
+
+// GetAPIInternalStats get statistics by shorten request and users.
+func (s Server) GetAPIInternalStats(c *gin.Context) {
+	ctx := c.Request.Context()
+	h := c.Request.Header.Get(RealIPHeader)
+	ip := net.ParseIP(h)
+	if ip == nil {
+		logger.Log.Debug(fmt.Sprintf("Bad IP header %s", h))
+		c.AbortWithStatus(http.StatusForbidden)
+		return
+	}
+	ipNet := s.conf.TrustedSubnetCIDR
+	if ipNet == nil {
+		logger.Log.Debug("SubNet param is empty")
+		c.AbortWithStatus(http.StatusForbidden)
+		return
+	}
+	if !ipNet.Contains(ip) {
+		logger.Log.Debug(fmt.Sprintf("SubNet not contains this ip %v", ip))
+		c.AbortWithStatus(http.StatusForbidden)
+		return
+	}
+	stat, err := s.sh.FindStats(ctx)
+	if err != nil {
+		logger.Log.Error("sh.FindStats", zap.Error(err))
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	resp, err := json.Marshal(stat)
+	if err != nil {
+		logger.Log.Error("json.Marshal", zap.Error(err))
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	c.Data(http.StatusOK, ApplicationJSON, resp)
 }
 
 func (s Server) sendJSONResultResp(c *gin.Context, id string, status int) {

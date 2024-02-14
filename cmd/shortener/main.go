@@ -148,6 +148,7 @@ func setUpRouter(conf config.Conf, uh *server.Server) *gin.Engine {
 	r.POST(`/api/shorten/batch`, uh.ShortenBatch)
 	r.GET(`/ping`, uh.Ping)
 	r.DELETE(`/api/user/urls`, uh.DeleteURLs)
+	r.GET(`/api/internal/stats`, uh.GetAPIInternalStats)
 	r.NoRoute(uh.NoRoute)
 
 	return r
